@@ -3,6 +3,7 @@ import pandas as pd
 import requests
 import matplotlib.pyplot as plt
 import sqlite3
+import get_server_data
 
 
 def save_as_sqlite(df, table_name):
@@ -15,10 +16,7 @@ def get_tide_data_from_server(yr, station_num):
     url = "http://tidesandcurrents.noaa.gov/api/datagetter?begin_date={0}0101&" \
           "end_date={0}1231&station={1}&product=high_low&datum=NAVD&units=metric&" \
           "time_zone=lst&application=web_services&format=xml".format(yr, station_num)
-
-    response = requests.get(url)
-    soup = bs4.BeautifulSoup(response.text, 'lxml')
-    return soup
+    return get_server_data.get_server_data(url)
 
 
 def parse_data(soup, map, data_tag, val_tag, in_tag):
