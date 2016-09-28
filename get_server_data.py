@@ -7,7 +7,7 @@ def get_server_data(url):
     soup = bs4.BeautifulSoup(response.text, 'lxml')
     return soup
 
-def parse_data(soup, map, data_tag, val_tag, in_tag):
+def parse_data(soup, map, data_tag, val_tag, in_tag, station_id):
     """
     parses xml data into a pandas dataframe according to a map dict
     :param soup: the xml data as a BeautifulSoup object
@@ -20,7 +20,6 @@ def parse_data(soup, map, data_tag, val_tag, in_tag):
     """
     datapoints = soup.find_all(data_tag)
     df = pd.DataFrame(columns=['station_id']+map.keys())
-    station_id = soup.metadata['id']
     for d in datapoints:
         data_dict = dict()
         for key, val in map.iteritems():
@@ -36,4 +35,9 @@ def parse_data(soup, map, data_tag, val_tag, in_tag):
         df = df.append(data_dict,
                        ignore_index=True)
     df.station_id = station_id
+    return df
+
+def make_date_index(df, field):
+    df[field] = pd.DatetimeIndex(df[field])
+    df.set_index(field, drop=True, inplace=True)
     return df

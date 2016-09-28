@@ -3,7 +3,7 @@ import pandas as pd
 import requests
 import matplotlib.pyplot as plt
 import sqlite3
-import get_server_data
+from get_server_data import *
 
 
 def save_as_sqlite(df, table_name):
@@ -19,9 +19,6 @@ def get_tide_data_from_server(yr, station_num):
     return get_server_data.get_server_data(url)
 
 
-
-
-
 def get_tide_df(yrs, station_num):
     data_tag = "hl"
     value_tag = 'v'
@@ -30,15 +27,10 @@ def get_tide_df(yrs, station_num):
     df = pd.DataFrame()
     for y in yrs:
         soup = get_tide_data_from_server(y, station_num)
-        df = df.append(parse_data(soup, map, data_tag, value_tag, True))
+        df = df.append(parse_data(soup, map, data_tag, value_tag, True, station_num))
     df = make_date_index(df, 'date')
     return df
 
-
-def make_date_index(df, field):
-    df[field] = pd.DatetimeIndex(df[field])
-    df.set_index(field, drop=True, inplace=True)
-    return df
 
 start_year = 1980
 end_year = 2016
