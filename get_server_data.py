@@ -2,12 +2,14 @@ import requests
 import bs4
 import pandas as pd
 
+
 def get_server_data(url):
     response = requests.get(url)
     soup = bs4.BeautifulSoup(response.text, 'lxml')
     return soup
 
-def parse_data(soup, map, data_tag, val_tag, in_tag, station_id):
+
+def parse_data(soup, map, data_tag, val_tag, in_tag, station_id, gw=False):
     """
     parses xml data into a pandas dataframe according to a map dict
     :param soup: the xml data as a BeautifulSoup object
@@ -36,6 +38,14 @@ def parse_data(soup, map, data_tag, val_tag, in_tag, station_id):
                        ignore_index=True)
     df.station_id = station_id
     return df
+
+
+def parse_gw_data(soup):
+    variables = soup.find_all('wml2:observationmember')
+    for v in variables:
+        variable_name = v.find("om:name")["xlink:title"]
+        uom = v.find("wml2:uom")["xlink:title"]
+
 
 def make_date_index(df, field):
     df[field] = pd.DatetimeIndex(df[field])

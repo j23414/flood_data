@@ -16,7 +16,7 @@ def get_tide_data_from_server(yr, station_num):
     url = "http://tidesandcurrents.noaa.gov/api/datagetter?begin_date={0}0101&" \
           "end_date={0}1231&station={1}&product=high_low&datum=NAVD&units=metric&" \
           "time_zone=lst&application=web_services&format=xml".format(yr, station_num)
-    return get_server_data.get_server_data(url)
+    return get_server_data(url)
 
 
 def get_tide_df(yrs, station_num):
@@ -32,7 +32,7 @@ def get_tide_df(yrs, station_num):
     return df
 
 
-start_year = 1980
+start_year = 2015
 end_year = 2016
 years = range(start_year, end_year)
 station = '8638610'
