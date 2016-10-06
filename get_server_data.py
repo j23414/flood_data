@@ -60,6 +60,7 @@ def parse_wml2_data(soup):
             res_list.append(res)
     df = pd.DataFrame(res_list)
     df = make_date_index(df, 'datetime')
+    df['value'] = pd.to_numeric(df['value'])
     return df
 
 
