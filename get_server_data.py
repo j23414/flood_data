@@ -40,11 +40,27 @@ def parse_data(soup, map, data_tag, val_tag, in_tag, station_id, gw=False):
     return df
 
 
-def parse_gw_data(soup):
-    variables = soup.find_all('wml2:observationmember')
-    for v in variables:
-        variable_name = v.find("om:name")["xlink:title"]
+def parse_wml2_data(soup):
+    variable_block = soup.find_all('wml2:observationmember')
+    res_list =[]
+    for v in variable_block:
+        variable_name = v.find("om:observedproperty")["xlink:title"]
+        variable_type = v.find("om:name")["xlink:title"]
         uom = v.find("wml2:uom")["xlink:title"]
+        value_tags_list = v.find_all('wml2:point')
+        for value_tag in value_tags_list:
+            datetime = value_tag.find('wml2:time').text
+            val = value_tag.find('wml2:value').text
+            res = {'variable_name': variable_name,
+                   'variable_type': variable_type,
+                   'units': uom,
+                   'datetime': datetime,
+                   'value': val,
+                   }
+            res_list.append(res)
+    df = pd.DataFrame(res_list)
+    df = make_date_index(df, 'datetime')
+    return df
 
 
 def make_date_index(df, field):
