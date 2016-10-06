@@ -1,5 +1,4 @@
 from get_server_data import get_server_data, parse_wml2_data
-import matplotlib.pyplot as plt
 site_number = "0204288771"
 parameter_id = '00060'
 start_date = '2015-07-17'

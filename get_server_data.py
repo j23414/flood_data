@@ -1,3 +1,4 @@
+import sqlite3
 import requests
 import bs4
 import pandas as pd
@@ -68,3 +69,8 @@ def make_date_index(df, field):
     df[field] = pd.DatetimeIndex(df[field])
     df.set_index(field, drop=True, inplace=True)
     return df
+
+
+def save_as_sqlite(df, table_name):
+    con = sqlite3.connect('data.sqlite')
+    df.to_sql(table_name, con)
