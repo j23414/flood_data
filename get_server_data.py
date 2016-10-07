@@ -40,10 +40,21 @@ def parse_data(soup, map, data_tag, val_tag, in_tag, station_id, gw=False):
     df.station_id = station_id
     return df
 
+def create_site(con, site):
+    sql = """INSERT INTO sites(SiteName, SiteCode, Lat, Lon)
+            Values(?,?,?,?)"""
+    cur = con.cursor()
+    cur.execute(sql, site)
+    cur.commit()
 
 def parse_wml2_data(soup):
+    """
+    :param soup: bs4 soup object of wml2 time series
+    :return:
+    """
     variable_block = soup.find_all('wml2:observationmember')
     res_list =[]
+    site_data = get_site_data(soup)
     for v in variable_block:
         variable_name = v.find("om:observedproperty")["xlink:title"]
         variable_type = v.find("om:name")["xlink:title"]
@@ -63,6 +74,14 @@ def parse_wml2_data(soup):
     df = make_date_index(df, 'datetime')
     df['value'] = pd.to_numeric(df['value'])
     return df
+
+
+def get_site_data(soup):
+    site_code = soup.find('gml:identifier').text
+    site_name = soup.find('om:featureofinterest')['xlink:title']
+    lat = soup.find('gml:pos').text.split(' ')[0]
+    lon = soup.find('gml:pos').text.split(' ')[1]
+    return (site_code, site_name, lat, lon)
 
 
 def make_date_index(df, field):
