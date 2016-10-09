@@ -40,12 +40,34 @@ def parse_data(soup, map, data_tag, val_tag, in_tag, station_id, gw=False):
     df.station_id = station_id
     return df
 
+
+def entry_exists(con, site_code):
+    cur = con.cursor()
+    sql = """Select 1 from sites where SiteCode = "{}" """.format(site_code)
+    res = cur.execute(sql)
+    return len(res.fetchall())
+
+
+def get_site_id(con, soup):
+    cur = con.cursor()
+    site_data = get_site_data(soup)
+    site_code = site_data[0]
+    if entry_exists(con, site_code):
+        sql = """SELECT SiteID from sites where SiteCode = "{}" """.format(site_code)
+        res = cur.execute(sql)
+        return res.next()[0]
+    else:
+        create_site(con, site_data)
+        get_site_id(con, site_data)
+
+
 def create_site(con, site):
-    sql = """INSERT INTO sites(SiteName, SiteCode, Lat, Lon)
+    sql = """INSERT INTO sites(SiteCode, SiteName, Lat, Lon)
             Values(?,?,?,?)"""
     cur = con.cursor()
     cur.execute(sql, site)
-    cur.commit()
+    con.commit()
+
 
 def parse_wml2_data(soup):
     """
@@ -54,7 +76,8 @@ def parse_wml2_data(soup):
     """
     variable_block = soup.find_all('wml2:observationmember')
     res_list =[]
-    site_data = get_site_data(soup)
+    con = sqlite3.connect('floodData.sqlite')
+    site_id = get_site_id(con, soup)
     for v in variable_block:
         variable_name = v.find("om:observedproperty")["xlink:title"]
         variable_type = v.find("om:name")["xlink:title"]
@@ -68,6 +91,7 @@ def parse_wml2_data(soup):
                    'units': uom,
                    'datetime': datetime,
                    'value': val,
+                   'SiteID': site_id
                    }
             res_list.append(res)
     df = pd.DataFrame(res_list)
@@ -81,7 +105,7 @@ def get_site_data(soup):
     site_name = soup.find('om:featureofinterest')['xlink:title']
     lat = soup.find('gml:pos').text.split(' ')[0]
     lon = soup.find('gml:pos').text.split(' ')[1]
-    return (site_code, site_name, lat, lon)
+    return site_code, site_name, lat, lon
 
 
 def make_date_index(df, field):
