@@ -21,8 +21,9 @@ c.execute("""CREATE TABLE variables\
             Units text);""")
 c.execute("""CREATE TABLE sites \
             (SiteID INTEGER PRIMARY KEY AUTOINCREMENT, \
-            SiteName text, \
             SiteCode text, \
+            SiteName text, \
+            SourceOrg text, \
             Lat real, \
             Lon real);""")
 c.execute("""CREATE TABLE datavalues \

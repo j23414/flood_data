@@ -41,35 +41,36 @@ def parse_data(soup, map, data_tag, val_tag, in_tag, station_id, gw=False):
     return df
 
 
-def entry_exists(typ, con, code, **kwargs):
+def entry_exists(typ, con, data):
+    code = data[0]
     cur = con.cursor()
     sql = """Select 1 FROM {}s WHERE {}Code = "{}" """.format(typ.lower(), typ, code)
     if typ == 'Variable':
+        variable_type = data[2]
         sql = """Select 1 FROM variables WHERE VariableCode  = "{}"
                                     AND VariableType = "{}" """\
-            .format(code, kwargs['variable_type'])
+            .format(code, variable_type)
 
     res = cur.execute(sql)
 
     return len(res.fetchall())
 
 
-def get_id(typ, con, soup, code, **kwargs):
-    if entry_exists(typ, con, code, **kwargs):
+def get_id(typ, con, data):
+    code = data[0]
+    if entry_exists(typ, con, data):
         sql = """SELECT {0}ID FROM {1}s WHERE {0}Code = "{2}" """.format(typ, typ.lower(), code)
         if typ == "Variable":
             sql = """SELECT {0}ID FROM {1}s WHERE {0}Code = "{2}" AND
-                        {0}Type = "{3}" """.format(typ, typ.lower(), code, kwargs['variable_type'])
+                        {0}Type = "{3}" """.format(typ, typ.lower(), code, data[2])
         cur = con.cursor()
         res = cur.execute(sql)
         id = res.next()[0]
         return id
     else:
-        get_data_fxn = globals()["get_{}_data".format(typ.lower())]
-        data = get_data_fxn(soup)
         create_fxn = globals()["create_{}".format(typ.lower())]
         create_fxn(con, data)
-        return get_id(typ, con, soup, code, **kwargs)
+        return get_id(typ, con, data)
 
 
 def create_data_value(con, datavalue):
@@ -79,8 +80,8 @@ def create_data_value(con, datavalue):
 
 
 def create_site(con, site):
-    sql = """INSERT INTO sites(SiteCode, SiteName, Lat, Lon)
-            Values(?,?,?,?)"""
+    sql = """INSERT INTO sites(SiteCode, SiteName, SourceOrg, Lat, Lon)
+            Values(?,?,?,?,?)"""
     create(con, sql, site)
 
 
@@ -96,7 +97,7 @@ def create(con, sql, data):
     con.commit()
 
 
-def parse_wml2_data(wml2url):
+def parse_wml2_data(wml2url, src_org):
     """
     :param soup: bs4 soup object of wml2 time series
     :return:
@@ -104,16 +105,14 @@ def parse_wml2_data(wml2url):
     soup = get_server_data(wml2url)
     res_list = []
     con = sqlite3.connect('floodData.sqlite')
-    site_code = get_site_data(soup)[0]
-    site_id = get_id('Site', con, soup, site_code)
+    site_data = get_site_data(soup, src_org)
+    site_id = get_id('Site', con, site_data)
 
     variable_block = soup.find_all('wml2:observationmember')
     for v in variable_block:
         value_tags_list = v.find_all('wml2:point')
         variable_data = get_variable_data(v)
-        variable_code = variable_data[0]
-        variable_type = variable_data[2]
-        variable_id = get_id('Variable', con, v, variable_code, variable_type=variable_type)
+        variable_id = get_id('Variable', con, variable_data)
         for value_tag in value_tags_list:
             datetime = value_tag.find('wml2:time').text
             val = value_tag.find('wml2:value').text
@@ -133,12 +132,12 @@ def parse_wml2_data(wml2url):
     return df
 
 
-def get_site_data(soup):
+def get_site_data(soup, src_org):
     site_code = soup.find('gml:identifier').text
     site_name = soup.find('om:featureofinterest')['xlink:title']
     lat = soup.find('gml:pos').text.split(' ')[0]
     lon = soup.find('gml:pos').text.split(' ')[1]
-    return site_code, site_name, lat, lon
+    return site_name, site_code, src_org, lat, lon
 
 
 def get_variable_data(soup):
