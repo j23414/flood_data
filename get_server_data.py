@@ -137,7 +137,7 @@ def get_site_data(soup, src_org):
     site_name = soup.find('om:featureofinterest')['xlink:title']
     lat = soup.find('gml:pos').text.split(' ')[0]
     lon = soup.find('gml:pos').text.split(' ')[1]
-    return site_name, site_code, src_org, lat, lon
+    return site_code, site_name, src_org, lat, lon
 
 
 def get_variable_data(soup):

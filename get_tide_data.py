@@ -9,6 +9,13 @@ def get_tide_data_from_server(yr, station_num):
     return get_server_data(url)
 
 
+def get_tide_site_data (soup, src_org):
+    site_code = soup.find('metadata')['id']
+    site_name = soup.find('metadata')['name']
+    site_lat = soup.find('metadata')['lat']
+    site_lon = soup.find('metadata')['lon']
+    return site_code, site_name, src_org, site_lat, site_lon
+
 def get_tide_df(yrs, station_num):
     data_tag = "hl"
     value_tag = 'v'
@@ -26,8 +33,4 @@ start_year = 2015
 end_year = 2016
 years = range(start_year, end_year)
 station = '8638610'
-df = get_tide_df(years, station)
-# add variable_name and unit to dataframe for consistency
-df['variable_name'] = 'water level'
-df['units'] = 'm'
-save_as_sqlite(df, 'tide_levels')
+# df = get_tide_df(years, station)
