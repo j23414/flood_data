@@ -55,7 +55,7 @@ def get_id(typ, con, data):
     id_name = '{}ID'.format(typ)
     code = data[code_name]
     check_by = [code_name] if typ == 'Site' else [code_name, 'VariableType']
-    df = append_non_duplicates(con, table_name, data_df, check_by)
+    append_non_duplicates(con, table_name, data_df, check_by)
     table = get_db_table_as_df(con, table_name)
     if typ == 'Variable':
         id_row = table[(table[code_name] == code) & (table['VariableType'] == data['VariableType'])]
@@ -137,6 +137,15 @@ def save_as_sqlite(df, table_name):
 
 
 def append_non_duplicates(con, table, df, check_col):
+    """
+    adds values that are not already in the db to the db
+    :param con: db connection object
+    :param table: String. name of table where the values should be added e.g. 'sites'
+    :param df: pandas df. a dataframe with the data to be potentially added to the db
+    :param check_col: List. the columns that will be used to check for duplicates in db e.g.
+    'VariableCode' and 'VariableType' if checking a variable
+    :return: pandas df. a dataframe with the non duplicated values
+    """
     db_df = get_db_table_as_df(con, table)
     if not db_df.empty:
         if table == 'datavalues':
@@ -153,7 +162,7 @@ def append_non_duplicates(con, table, df, check_col):
         non_duplicated.columns = cols_clean
         non_duplicated = non_duplicated[df.columns]
         non_duplicated.to_sql(table, con, if_exists='append', index=False)
-        return non_duplicated
+        return df
     else:
         index = True if table == 'datavalues' else False
         df.to_sql(table, con, if_exists='append', index=index)
