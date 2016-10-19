@@ -9,12 +9,13 @@ def get_tide_data_from_server(yr, station_num):
     return get_server_data(url)
 
 
-def get_tide_site_data (soup, src_org):
+def get_tide_site_data(soup, src_org):
     site_code = soup.find('metadata')['id']
     site_name = soup.find('metadata')['name']
     site_lat = soup.find('metadata')['lat']
     site_lon = soup.find('metadata')['lon']
     return site_code, site_name, src_org, site_lat, site_lon
+
 
 def get_tide_df(yrs, station_num):
     data_tag = "hl"

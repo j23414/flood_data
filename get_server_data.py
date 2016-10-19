@@ -73,12 +73,6 @@ def get_id(typ, con, data):
         return get_id(typ, con, data)
 
 
-def create_data_value(con, datavalue):
-    sql = """INSERT INTO datavalues(Value, Datetime, VariableID, SiteID)
-            Values(?,?,?,?)"""
-    create(con, sql, datavalue)
-
-
 def create_site(con, site):
     sql = """INSERT INTO sites(SiteCode, SiteName, SourceOrg, Lat, Lon)
             Values(?,?,?,?,?)"""
@@ -127,8 +121,8 @@ def parse_wml2_data(wml2url, src_org):
     df['Value'] = pd.to_numeric(df['Value'])
 
     # check against current datavalues table in db to avoid storing duplicates
-    df = remove_duplicates(con, df)
-    df.to_sql('datavalues', con, if_exists='append')
+    non_duplicated_df = remove_duplicates(con, df)
+    non_duplicated_df.to_sql('datavalues', con, if_exists='append')
     return df
 
 
@@ -159,19 +153,24 @@ def save_as_sqlite(df, table_name):
     df.to_sql(table_name, con)
 
 
-def remove_duplicates(con, df):
-    db_df = get_db_table_as_df(con, 'datavalues')
+def remove_duplicates(con, table, df, check_col):
+    db_df = get_db_table_as_df(con, table)
     if not db_df.empty:
-        df.reset_index(inplace=True)
-        db_df.reset_index(inplace=True)
+        if table == 'datavalues':
+            df.reset_index(inplace=True)
+            db_df.reset_index(inplace=True)
         merged = df.merge(db_df,
                           how='outer',
-                          on=['SiteID', 'VariableID', 'Datetime'],
+                          on=check_col,
                           indicator=True)
         non_duplicated = merged[merged._merge == 'left_only']
-        non_duplicated = make_date_index(non_duplicated, 'Datetime')
-        non_duplicated.loc[:, 'Value'] = non_duplicated['Value_x']
-        non_duplicated = non_duplicated[['SiteID', 'VariableID', 'Value']]
+        filter_cols = [col for col in list(non_duplicated) if "_y" not in col and "_m" not in col]
+        non_duplicated = non_duplicated[filter_cols]
+        cols_clean = [col.replace('_x', '') for col in list(non_duplicated)]
+        non_duplicated.columns = cols_clean
+        if table == 'datavalues':
+            non_duplicated = make_date_index(non_duplicated, 'Datetime')
+        non_duplicated = non_duplicated[df.columns]
         return non_duplicated
     else:
         return df
