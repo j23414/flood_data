@@ -14,7 +14,11 @@ def get_tide_site_data(soup, src_org):
     site_name = soup.find('metadata')['name']
     site_lat = soup.find('metadata')['lat']
     site_lon = soup.find('metadata')['lon']
-    return site_code, site_name, src_org, site_lat, site_lon
+    return {'SiteCode': site_code,
+            'SiteName': site_name,
+            'SourceOrg': src_org,
+            'Lat': site_lat,
+            'Lon': site_lon}
 
 
 def get_tide_df(yrs, station_num):

@@ -41,60 +41,37 @@ def parse_data(soup, map, data_tag, val_tag, in_tag, station_id, gw=False):
     return df
 
 
-def entry_exists(typ, con, data):
-    code = data[0]
-    cur = con.cursor()
-    sql = """Select 1 FROM {}s WHERE {}Code = "{}" """.format(typ.lower(), typ, code)
-    if typ == 'Variable':
-        variable_type = data[2]
-        sql = """Select 1 FROM variables WHERE VariableCode  = "{}"
-                                    AND VariableType = "{}" """\
-            .format(code, variable_type)
-
-    res = cur.execute(sql)
-
-    return len(res.fetchall())
-
-
 def get_id(typ, con, data):
-    code = data[0]
-    if entry_exists(typ, con, data):
-        sql = """SELECT {0}ID FROM {1}s WHERE {0}Code = "{2}" """.format(typ, typ.lower(), code)
-        if typ == "Variable":
-            sql = """SELECT {0}ID FROM {1}s WHERE {0}Code = "{2}" AND
-                        {0}Type = "{3}" """.format(typ, typ.lower(), code, data[2])
-        cur = con.cursor()
-        res = cur.execute(sql)
-        id = res.next()[0]
-        return id
+    """
+    gets either the siteid or variableid from the db
+    :param typ: String. Either "Site" or "Variable"
+    :param con: aqlite connection. connection to db
+    :param data: Dict. the site or variable data
+    :return: int. id of site or variable
+    """
+    data_df = pd.DataFrame(data, index=[0])
+    code_name = '{}Code'.format(typ)
+    table_name = '{}s'.format(typ.lower())
+    id_name = '{}ID'.format(typ)
+    code = data[code_name]
+    check_by = [code_name] if typ == 'Site' else [code_name, 'VariableType']
+    df = append_non_duplicates(con, table_name, data_df, check_by)
+    table = get_db_table_as_df(con, table_name)
+    if typ == 'Variable':
+        id_row = table[(table[code_name] == code) & (table['VariableType'] == data['VariableType'])]
     else:
-        create_fxn = globals()["create_{}".format(typ.lower())]
-        create_fxn(con, data)
-        return get_id(typ, con, data)
-
-
-def create_site(con, site):
-    sql = """INSERT INTO sites(SiteCode, SiteName, SourceOrg, Lat, Lon)
-            Values(?,?,?,?,?)"""
-    create(con, sql, site)
-
-
-def create_variable(con, variable):
-    sql = """INSERT INTO variables(VariableCode, VariableName, VariableType, Units)
-            Values(?,?,?,?)"""
-    create(con, sql, variable)
-
-
-def create(con, sql, data):
-    cur = con.cursor()
-    cur.execute(sql, data)
-    con.commit()
+        id_row = table[table[code_name] == code]
+    id_num = id_row[id_name].values[0]
+    return id_num
 
 
 def parse_wml2_data(wml2url, src_org):
     """
-    :param soup: bs4 soup object of wml2 time series
-    :return:
+    parses wml2 data into pandas dataframe and adds the data, including the site and variable, into
+    the database if not already in there
+    :param wml2url: String. the service response in wml2 format
+    :param src_org: String. the organization e.g. "USGS"
+    :return: dataframe of the time series
     """
     soup = get_server_data(wml2url)
     res_list = []
@@ -117,21 +94,23 @@ def parse_wml2_data(wml2url, src_org):
                    }
             res_list.append(res)
     df = pd.DataFrame(res_list)
-    df = make_date_index(df, 'Datetime')
     df['Value'] = pd.to_numeric(df['Value'])
-
-    # check against current datavalues table in db to avoid storing duplicates
-    non_duplicated_df = remove_duplicates(con, df)
-    non_duplicated_df.to_sql('datavalues', con, if_exists='append')
+    df = make_date_index(df, 'Datetime')
+    append_non_duplicates(con, 'datavalues', df, ['SiteID', 'Datetime', 'VariableID'])
     return df
 
 
 def get_site_data(soup, src_org):
     site_code = soup.find('gml:identifier').text
     site_name = soup.find('om:featureofinterest')['xlink:title']
-    lat = soup.find('gml:pos').text.split(' ')[0]
-    lon = soup.find('gml:pos').text.split(' ')[1]
-    return site_code, site_name, src_org, lat, lon
+    site_lat = soup.find('gml:pos').text.split(' ')[0]
+    site_lon = soup.find('gml:pos').text.split(' ')[1]
+    return {'SiteCode': site_code,
+            'SiteName': site_name,
+            'SourceOrg': src_org,
+            'Lat': site_lat,
+            'Lon': site_lon
+            }
 
 
 def get_variable_data(soup):
@@ -139,7 +118,11 @@ def get_variable_data(soup):
     variable_name = soup.find("om:observedproperty")["xlink:title"]
     variable_type = soup.find("om:name")["xlink:title"]
     uom = soup.find("wml2:uom")["xlink:title"]
-    return variable_code, variable_name, variable_type, uom
+    return {'VariableCode': variable_code,
+            'VariableName': variable_name,
+            'VariableType': variable_type,
+            'Units': uom
+            }
 
 
 def make_date_index(df, field):
@@ -153,7 +136,7 @@ def save_as_sqlite(df, table_name):
     df.to_sql(table_name, con)
 
 
-def remove_duplicates(con, table, df, check_col):
+def append_non_duplicates(con, table, df, check_col):
     db_df = get_db_table_as_df(con, table)
     if not db_df.empty:
         if table == 'datavalues':
@@ -168,11 +151,12 @@ def remove_duplicates(con, table, df, check_col):
         non_duplicated = non_duplicated[filter_cols]
         cols_clean = [col.replace('_x', '') for col in list(non_duplicated)]
         non_duplicated.columns = cols_clean
-        if table == 'datavalues':
-            non_duplicated = make_date_index(non_duplicated, 'Datetime')
         non_duplicated = non_duplicated[df.columns]
+        non_duplicated.to_sql(table, con, if_exists='append', index=False)
         return non_duplicated
     else:
+        index = True if table == 'datavalues' else False
+        df.to_sql(table, con, if_exists='append', index=index)
         return df
 
 
