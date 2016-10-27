@@ -73,8 +73,8 @@ def update_tide_data(yrs, station_num, var_type, units):
         parse_tide_data(soup, data_tag, value_tag, site_id, var_id)
 
 
-start_year = 1995
-end_year = 2016
+start_year = 2016
+end_year = 2017
 years = range(start_year, end_year)
 station = '8638610'
 units = 'english'
