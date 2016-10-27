@@ -2,15 +2,18 @@
 import pandas as pd
 
 
-def clean_lists(l):
+def clean_lists(l, first):
     combined = [a[0] + "&" + a[1] for a in l]
     combined_clean = [a.replace("'", "") for a in combined]
-    combined_clean = [a.replace("&", " & ") for a in combined_clean]
+    if first:
+        combined_clean = [a.replace("&", " & ") for a in combined_clean]
+    else:
+        combined_clean = [a.replace("&", " &") for a in combined_clean]
     combined_clean = [a.strip() for a in combined_clean]
     return combined_clean
 
 
-df1 = pd.read_csv('STORM_data_flooded_streets_2010-2016.csv')
+df1 = pd.read_csv('STORM_data_flooded_streets_2010-2016_no_duplicates.csv')
 locations = df1.loc[:,'location']
 locations = pd.Series(locations.unique())
 loc_split = locations.str.split('&')
@@ -30,7 +33,7 @@ lists = [d.replace(']','') for d in lists]
 a_list = [(d.split(',')[1], d.split(',')[0]) for d in lists]
 b_list = [(d.split(',')[0], d.split(',')[1]) for d in lists]
 
-a_list = clean_lists(a_list)
-b_list = clean_lists(b_list)
+a_list = clean_lists(a_list, 1)
+b_list = clean_lists(b_list, 0)
 dups = pd.DataFrame({'a': a_list, 'b': b_list})
-dups.to_csv('duplicates.csv')
+dups.to_csv('duplicates_check.csv')
