@@ -13,7 +13,8 @@ def clean_lists(l, first):
     return combined_clean
 
 
-df1 = pd.read_csv('STORM_data_flooded_streets_2010-2016_no_duplicates.csv')
+df1 = pd.read_csv('STORM_data_flooded_streets_2010-2016.csv')
+df1['location'] = df1['location'].str.strip()
 locations = df1.loc[:,'location']
 locations = pd.Series(locations.unique())
 loc_split = locations.str.split('&')
@@ -36,4 +37,4 @@ b_list = [(d.split(',')[0], d.split(',')[1]) for d in lists]
 a_list = clean_lists(a_list, 1)
 b_list = clean_lists(b_list, 0)
 dups = pd.DataFrame({'a': a_list, 'b': b_list})
-dups.to_csv('duplicates_check.csv')
+dups.to_csv('duplicates.csv')
