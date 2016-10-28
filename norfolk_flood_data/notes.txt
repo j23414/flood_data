@@ -1,0 +1,7 @@
+Rain gauges
+hrsd, MMPS-006,
+WU, KVANORFO2
+
+Shallow Wells
+Seay Avenue Pump Station - MMPS-170
+
