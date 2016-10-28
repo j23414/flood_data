@@ -1,6 +1,8 @@
-import plotly.plotly as plty
 import plotly.graph_objs as go
-from get_server_data import get_table_for_variable
+import plotly.plotly as plty
+
+from db_scripts.get_server_data import get_table_for_variable
+
 flow_df = get_table_for_variable('1')
 flow_df = flow_df.sort_index()
 tide_df = get_table_for_variable('4')
