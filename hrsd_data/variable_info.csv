@@ -1,2 +1,3 @@
 VariableCode,VariableName,VariableType,Units
 Rainfall,Rainfall Depth,Incremental,in
+Shallow_well_depth, Shallow Well Depth in NAVD88, depth, ft
