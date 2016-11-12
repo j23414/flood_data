@@ -2,9 +2,12 @@ import sqlite3
 import requests
 import bs4
 import pandas as pd
+import os
 
+dir = os.path.dirname(__file__)
+db_filename = os.path.join(dir, '../floodData.sqlite')
 
-con = sqlite3.connect('../floodData.sqlite')
+con = sqlite3.connect(db_filename)
 
 
 def get_server_data(url):
@@ -136,9 +139,8 @@ def append_non_duplicates(table, df, check_col):
         return df
 
 
-def get_db_table_as_df(name, **kwargs):
+def get_db_table_as_df(name, sql="""SELECT * FROM {};"""):
     global con
-    sql = kwargs.get('sql', """SELECT * FROM {};""".format(name))
     if name == 'datavalues':
         date_col = 'Datetime'
     else:
@@ -155,3 +157,19 @@ def get_table_for_variable(variable_id):
     df = get_db_table_as_df(table_name, sql=sql)
     return df
 
+
+def get_units(variable_id):
+    table_name = 'variables'
+    sql = """SElECT Units FROM {} WHERE VariableID={}""".format(table_name, variable_id)
+    df = get_db_table_as_df(table_name, sql=sql)
+    return df.values.all()
+
+
+class Variable:
+    def __init__(self, varid):
+        table_name = 'variables'
+        sql = """SELECT * FROM {} WHERE VariableID={}""".format(table_name, varid)
+        df = get_db_table_as_df('variables', sql)
+        self.units = df.Units.values.all()
+        self.variable_name = df.VariableName.values.all()
+        self.variable_code = df.VariableCode.values.all()
