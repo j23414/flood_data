@@ -4,6 +4,7 @@ from matplotlib import gridspec
 from norfolk_flood_data.focus_intersection import dates
 from db_scripts.get_server_data import get_table_for_variable, Variable
 import numpy as np
+import math
 
 
 def resample_df(df, agg_typ):
@@ -21,8 +22,11 @@ def resample_df(df, agg_typ):
 def filter_dfs(df, dates):
     return df.loc[pd.to_datetime(dates)]
 
+
 def percentile(df):
-    df['val_percentile'] = 1-(df.Value.rank()/max(df.Value.rank()))
+    df['val_percentile'] = (df.Value.rank()/max(df.Value.rank()))*100
+    return df
+
 
 def rank(df):
     df['val_rank'] = max(df.Value.rank()) + 1 - df.Value.rank()
@@ -54,14 +58,15 @@ def plot_variable(variable_id, agg_typ, dates, site_id=None, plt_var='value'):
     df = resample_df(df, agg_typ)
     df = normalize(df)
     df = rank(df)
+    df = percentile(df)
     print df.val_rank.max()
     df = filter_dfs(df, dates)
     if plt_var == 'scaled':
-        plot_bars(df, 'scaled', v.variable_name, agg_typ, 'Scaled')
+        return plot_bars(df, 'scaled', v.variable_name, agg_typ, 'Scaled')
     elif plt_var == 'rank':
-        plot_bars(df, 'val_rank', v.variable_name, agg_typ, v.units)
+        return plot_bars(df, 'val_rank', v.variable_name, agg_typ, v.units)
     elif plt_var == 'value':
-        plot_bars(df, 'Value', v.variable_name, agg_typ, v.units)
+        return plot_bars(df, 'Value', v.variable_name, agg_typ, v.units)
 
 
 def autolabel(ax, rects, labs):
@@ -72,20 +77,21 @@ def autolabel(ax, rects, labs):
         try:
             label = int(labs[i])
         except ValueError:
-            if labs[i] == np.NaN:
+            if math.isnan(labs[i]):
                 label = 'NA'
-        ax.text(rect.get_x()+rect.get_width()/2, 0.25+height, label, rotation=75, ha='center', va='bottom')
+        ax.text(rect.get_x()+rect.get_width()/2, 0.25+height, label, rotation=75, ha='center',
+                va='bottom')
         i += 1
 
 
 def plot_bars(df, col, variable_name, agg_typ, units):
-    df = df.dropna()
+    df['Value'].fillna(0, inplace=True)
     fig = plt.figure()
     ind = np.arange(len(df.index))
     gs = gridspec.GridSpec(2, 2, width_ratios=[3.5, 1], height_ratios=[1, 1])
     ax0 = plt.subplot(gs[:, 0])
     bars = ax0.bar(ind, df[col])
-    autolabel(ax0, bars, df.val_rank)
+    autolabel(ax0, bars, df.val_percentile)
     ax0.set_xticks(ind+0.5)
     ax0.set_xticklabels(df.index.strftime("%Y-%m-%d"), rotation=90)
     ax0.set_ylabel(units)
@@ -99,16 +105,30 @@ def plot_bars(df, col, variable_name, agg_typ, units):
     ax1.set_ylim(0, 1)
     ax1.xaxis.set_ticklabels([])
     ax1.yaxis.set_ticklabels([])
-    ax1.text(0.5, 0.5, "rank out of \n{} \nobservations".format(int(df.val_rank.max())),
+    ax1.text(0.5, 0.5, "percentile",
              multialignment='center', rotation=20, ha='center', va='bottom')
     ax1.set_title('Legend')
     width = 0.5
     ax1.bar((1-width)/2, 0.5, width=width)
     fig.tight_layout()
     plt.savefig("../Manuscript/pres/11.18.mtg/{}_{}.png".format(variable_name, col), dpi=300)
+    plt.close()
+    return df
+
+
+def plot_together(df_list):
+    i = 0
+    fig, ax = plt.subplots()
+    cols = 'red', 'yellow', 'blue'
+    for df in df_list:
+        v = Variable(df.VariableID.dropna()[0])
+        ind = np.arange(len(df.index)) + i*0.25
+        ax.bar(ind, df.val_percentile, label=v.variable_name, color=cols[i], width=0.25)
+        i += 1
     plt.show()
 
+plot_tide_data = plot_variable(4, 'max', dates, site_id=None, plt_var='value')
+plot_gw_data = plot_variable(6, 'mean', dates, site_id=None, plt_var='value')
+plot_rain_data = plot_variable(5, 'sum', dates, site_id=6, plt_var='value')
 
-plot_variable(4, 'max', dates, plt_var='value')
-
-print dates
+plot_together([plot_tide_data, plot_gw_data, plot_rain_data])
