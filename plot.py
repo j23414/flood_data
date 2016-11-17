@@ -41,6 +41,20 @@ def normalize(df):
     return df
 
 
+def get_plottable_df(variable_id, agg_typ, dates, site_id=None):
+    df = get_table_for_variable(variable_id)
+    if site_id:
+        df = df[df.SiteID == site_id]
+    df = resample_df(df, agg_typ)
+    df = normalize(df)
+    df = rank(df)
+    df = percentile(df)
+    print df.val_rank.max()
+    df = filter_dfs(df, dates)
+    df['Value'].fillna(0, inplace=True)
+    return df
+
+
 def plot_variable(variable_id, agg_typ, dates, site_id=None, plt_var='value'):
     """
     plots bar charts for a given variable given a list of dates
@@ -51,16 +65,8 @@ def plot_variable(variable_id, agg_typ, dates, site_id=None, plt_var='value'):
     :param site_id: site_id on which to filter (mostly for rainfall since there are multiple gauges
     :return:
     """
-    df = get_table_for_variable(variable_id)
-    if site_id:
-        df = df[df.SiteID == site_id]
+    df = get_plottable_df(variable_id, agg_typ, dates, site_id)
     v = Variable(variable_id)
-    df = resample_df(df, agg_typ)
-    df = normalize(df)
-    df = rank(df)
-    df = percentile(df)
-    print df.val_rank.max()
-    df = filter_dfs(df, dates)
     if plt_var == 'scaled':
         return plot_bars(df, 'scaled', v.variable_name, agg_typ, 'Scaled')
     elif plt_var == 'rank':
@@ -85,7 +91,6 @@ def autolabel(ax, rects, labs):
 
 
 def plot_bars(df, col, variable_name, agg_typ, units):
-    df['Value'].fillna(0, inplace=True)
     fig = plt.figure()
     ind = np.arange(len(df.index))
     gs = gridspec.GridSpec(2, 2, width_ratios=[3.5, 1], height_ratios=[1, 1])
@@ -116,19 +121,29 @@ def plot_bars(df, col, variable_name, agg_typ, units):
     return df
 
 
-def plot_together(df_list):
+def plot_together():
+    plot_tide_data = get_plottable_df(4, 'max', dates)
+    plot_gw_data = get_plottable_df(6, 'mean', dates)
+    plot_rain_data = get_plottable_df(5, 'sum', dates, site_id=6)
+    df_list = [plot_tide_data, plot_gw_data, plot_rain_data]
     i = 0
     fig, ax = plt.subplots()
     cols = 'red', 'yellow', 'blue'
     for df in df_list:
         v = Variable(df.VariableID.dropna()[0])
         ind = np.arange(len(df.index)) + i*0.25
-        ax.bar(ind, df.val_percentile, label=v.variable_name, color=cols[i], width=0.25)
+        bars = ax.bar(ind, df.val_percentile, label=v.variable_name, color=cols[i], width=0.25)
         i += 1
+        # autolabel(ax, bars, df.val_percentile)
+    ax.set_ylim(0, 110)
+    ax.set_xlim(0, len(ind))
+    ax.set_title('test')
+    ax.set_xticks(ind)
+    ax.set_xticklabels(df.index.strftime("%Y-%m-%d"), rotation=78)
+    lgd = ax.legend(bbox_to_anchor=(0.5, -0.3), loc='upper center')
+    fig.tight_layout()
+    fig.savefig("../Manuscript/pres/11.18.mtg/all.png", dpi=300, bbox_extra_artists=(lgd,), bbox_inches='tight')
     plt.show()
 
-plot_tide_data = plot_variable(4, 'max', dates, site_id=None, plt_var='value')
-plot_gw_data = plot_variable(6, 'mean', dates, site_id=None, plt_var='value')
-plot_rain_data = plot_variable(5, 'sum', dates, site_id=6, plt_var='value')
 
-plot_together([plot_tide_data, plot_gw_data, plot_rain_data])
+plot_together()
