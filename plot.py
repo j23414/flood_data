@@ -1,11 +1,14 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
-from norfolk_flood_data.focus_intersection import dates
+from norfolk_flood_data.focus_intersection import dates as focus_dates
 from db_scripts.get_server_data import get_table_for_variable, Variable
 import numpy as np
 import math
 from mpl_toolkits.mplot3d import Axes3D
+
+dates = focus_dates
+cols = '#a6cee3', '#d95f02', '#1f78b4'
 
 
 def resample_df(df, agg_typ):
@@ -23,7 +26,8 @@ def resample_df(df, agg_typ):
     return df
 
 
-def filter_dfs(df, dates):
+def filter_dfs(df):
+    global dates
     return df.loc[pd.to_datetime(dates)]
 
 
@@ -45,7 +49,8 @@ def normalize(df):
     return df
 
 
-def get_plottable_df(variable_id, agg_typ, dates, site_id=None):
+def get_plottable_df(variable_id, agg_typ, site_id=None):
+    global dates
     df = get_table_for_variable(variable_id)
     if site_id:
         df = df[df.SiteID == site_id]
@@ -54,29 +59,42 @@ def get_plottable_df(variable_id, agg_typ, dates, site_id=None):
     df = rank(df)
     df = percentile(df)
     print df.val_rank.max()
-    df = filter_dfs(df, dates)
+    df = filter_dfs(df)
     df['Value'].fillna(0, inplace=True)
     return df
 
 
-def plot_variable(variable_id, agg_typ, dates, site_id=None, plt_var='value'):
+def plot_indiv_variables(variable_id, agg_typ, site_id=None, plt_var='value', plot=False):
     """
     plots bar charts for a given variable given a list of dates
+    :param plot:
     :param plt_var:
     :param variable_id: 4-tide level, 5-rainfall, 6-shallow well depth
     :param agg_typ: how to aggregate the data on the daily time step ('min', 'max', 'mean', 'sum')
-    :param dates: list of dates
     :param site_id: site_id on which to filter (mostly for rainfall since there are multiple gauges
     :return:
     """
-    df = get_plottable_df(variable_id, agg_typ, dates, site_id)
+    global dates
+    df = get_plottable_df(variable_id, agg_typ, site_id)
     v = Variable(variable_id)
-    if plt_var == 'scaled':
-        return plot_bars(df, 'scaled', v.variable_name, agg_typ, 'Scaled')
-    elif plt_var == 'rank':
-        return plot_bars(df, 'val_rank', v.variable_name, agg_typ, v.units)
-    elif plt_var == 'value':
-        return plot_bars(df, 'Value', v.variable_name, agg_typ, v.units)
+    if plot:
+        global cols
+        if variable_id == 4:
+            c = cols[0]
+        elif variable_id == 6:
+            c = cols[1]
+        elif variable_id == 5:
+            c = cols[2]
+        else:
+            c = 'blue'
+
+        if plt_var == 'scaled':
+            plot_bars(df, 'scaled', v.variable_name, agg_typ, 'Scaled', color=c)
+        elif plt_var == 'rank':
+            plot_bars(df, 'val_rank', v.variable_name, agg_typ, v.units, color=c)
+        elif plt_var == 'value':
+            plot_bars(df, 'Value', v.variable_name, agg_typ, v.units, color=c)
+    return df
 
 
 def autolabel(ax, rects, labs):
@@ -90,17 +108,19 @@ def autolabel(ax, rects, labs):
         except ValueError:
             if math.isnan(labs[i]):
                 label = 'NA'
+            else:
+                label = 'unknown'
         ax.text(rect.get_x()+rect.get_width()/2, 0.25+height, label, rotation=75, ha='center',
                 va='bottom')
         i += 1
 
 
-def plot_bars(df, col, variable_name, agg_typ, units):
+def plot_bars(df, col, variable_name, agg_typ, units, color='blue'):
     fig = plt.figure()
     ind = np.arange(len(df.index))
     gs = gridspec.GridSpec(2, 2, width_ratios=[3.5, 1], height_ratios=[1, 1])
     ax0 = plt.subplot(gs[:, 0])
-    bars = ax0.bar(ind, df[col])
+    bars = ax0.bar(ind, df[col], color=color)
     autolabel(ax0, bars, df.val_percentile)
     ax0.set_xticks(ind+0.5)
     ax0.set_xticklabels(df.index.strftime("%Y-%m-%d"), rotation=90)
@@ -108,7 +128,7 @@ def plot_bars(df, col, variable_name, agg_typ, units):
     ax0.set_xlabel('Date')
     ax0.set_xlim(0, len(ind))
     ax0.set_ylim(0, df[col].max()*1.1)
-    ax0.set_title("{} {}".format(variable_name, agg_typ))
+    ax0.set_title("{}: {}".format(variable_name, agg_typ))
 
     ax1 = plt.subplot(gs[-1])
     ax1.set_xlim(0, 1)
@@ -119,17 +139,25 @@ def plot_bars(df, col, variable_name, agg_typ, units):
              multialignment='center', rotation=20, ha='center', va='bottom')
     ax1.set_title('Legend')
     width = 0.5
-    ax1.bar((1-width)/2, 0.5, width=width)
+    ax1.bar((1-width)/2, 0.5, width=width, color=color)
     fig.tight_layout()
     plt.savefig("../Manuscript/pres/11.18.mtg/{}_{}.png".format(variable_name, col), dpi=300)
     plt.close()
-    return df
 
 
-def plot_together(df_list):
+def all_plottable_dfs(plot=False):
+    global dates
+    plot_tide_data = plot_indiv_variables(4, 'max', plot=plot)
+    plot_gw_data = plot_indiv_variables(6, 'mean', plot=plot)
+    plot_rain_data = plot_indiv_variables(5, 'sum', site_id=6, plot=plot)
+    return plot_tide_data, plot_gw_data, plot_rain_data
+
+
+def plot_together():
+    df_list = all_plottable_dfs()
     i = 0
     fig, ax = plt.subplots(figsize=(15, 5))
-    cols = '#a6cee3', '#d95f02', '#1f78b4'
+    global cols
     for df in df_list:
         v = Variable(df.VariableID.dropna()[0])
         size = 2
@@ -143,14 +171,14 @@ def plot_together(df_list):
     ax.set_xticklabels(df.index.strftime("%Y-%m-%d"), rotation=90, ha='left')
     lgd = ax.legend(bbox_to_anchor=(0.5, -0.3), loc='upper center')
     fig.tight_layout()
-    fig.savefig("../Manuscript/pres/11.18.mtg/all.png", dpi=300, bbox_extra_artists=(lgd,), bbox_inches='tight')
-    plt.show()
+    fig.savefig("../Manuscript/pres/11.18.mtg/all.png",
+                dpi=300,
+                bbox_extra_artists=(lgd,),
+                bbox_inches='tight')
 
 
 def plot_3d():
-    plot_tide_data = get_plottable_df(4, 'max', dates)
-    plot_gw_data = get_plottable_df(6, 'mean', dates)
-    plot_rain_data = get_plottable_df(5, 'sum', dates, site_id=6)
+    plot_tide_data, plot_gw_data, plot_rain_data = all_plottable_dfs()
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
     x0 = plot_tide_data.val_percentile
@@ -164,10 +192,4 @@ def plot_3d():
     plt.show()
 
 
-plot_tide_data = get_plottable_df(4, 'max', dates)
-plot_gw_data = get_plottable_df(6, 'mean', dates)
-plot_rain_data = get_plottable_df(5, 'sum', dates, site_id=6)
-df_list = [plot_tide_data, plot_gw_data, plot_rain_data]
-plot_together(df_list)
-
-print dates
+all_plottable_dfs(plot=True)
