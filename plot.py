@@ -1,13 +1,13 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
-from norfolk_flood_data.focus_intersection import dates as focus_dates
+from norfolk_flood_data.focus_intersection import dates, events
 from db_scripts.get_server_data import get_table_for_variable, Variable
+from matplotlib import rcParams
 import numpy as np
 import math
 from mpl_toolkits.mplot3d import Axes3D
 
-dates = focus_dates
 cols = '#a6cee3', '#d95f02', '#1f78b4'
 
 
@@ -27,7 +27,6 @@ def resample_df(df, agg_typ):
 
 
 def filter_dfs(df):
-    global dates
     return df.loc[pd.to_datetime(dates)]
 
 
@@ -50,7 +49,6 @@ def normalize(df):
 
 
 def get_plottable_df(variable_id, agg_typ, site_id=None):
-    global dates
     df = get_table_for_variable(variable_id)
     if site_id:
         df = df[df.SiteID == site_id]
@@ -74,7 +72,6 @@ def plot_indiv_variables(variable_id, agg_typ, site_id=None, plt_var='value', pl
     :param site_id: site_id on which to filter (mostly for rainfall since there are multiple gauges
     :return:
     """
-    global dates
     df = get_plottable_df(variable_id, agg_typ, site_id)
     v = Variable(variable_id)
     if plot:
@@ -123,11 +120,12 @@ def plot_bars(df, col, variable_name, agg_typ, units, color='blue'):
     bars = ax0.bar(ind, df[col], color=color)
     autolabel(ax0, bars, df.val_percentile)
     ax0.set_xticks(ind+0.5)
-    ax0.set_xticklabels(df.index.strftime("%Y-%m-%d"), rotation=90)
+    ax0.set_xticklabels(events, rotation=90)
+    # ax0.set_xticklabels(df.index.strftime("%Y-%m-%d"), rotation=90)
     ax0.set_ylabel(units)
-    ax0.set_xlabel('Date')
+    ax0.set_xlabel('Event')
     ax0.set_xlim(0, len(ind))
-    ax0.set_ylim(0, df[col].max()*1.1)
+    ax0.set_ylim(ymax=df[col].max()*1.1)
     ax0.set_title("{}: {}".format(variable_name, agg_typ))
 
     ax1 = plt.subplot(gs[-1])
@@ -141,37 +139,49 @@ def plot_bars(df, col, variable_name, agg_typ, units, color='blue'):
     width = 0.5
     ax1.bar((1-width)/2, 0.5, width=width, color=color)
     fig.tight_layout()
-    plt.savefig("../Manuscript/pres/11.18.mtg/{}_{}.png".format(variable_name, col), dpi=300)
+    plt.savefig("../Manuscript/pres/11.18.mtg/{}_{}_events.png".format(variable_name, col), dpi=300)
     plt.close()
 
 
 def all_plottable_dfs(plot=False):
-    global dates
     plot_tide_data = plot_indiv_variables(4, 'max', plot=plot)
     plot_gw_data = plot_indiv_variables(6, 'mean', plot=plot)
     plot_rain_data = plot_indiv_variables(5, 'sum', site_id=6, plot=plot)
     return plot_tide_data, plot_gw_data, plot_rain_data
 
 
-def plot_together():
+def plot_together(col='val_percentile'):
     df_list = all_plottable_dfs()
     i = 0
-    fig, ax = plt.subplots(figsize=(15, 5))
+    fig, ax = plt.subplots(figsize=(8, 4.5))
     global cols
     for df in df_list:
         v = Variable(df.VariableID.dropna()[0])
         size = 2
         ind = np.arange(0, len(df.index)*size, size) + i*size*.25
-        ax.bar(ind, df.val_percentile, label=v.variable_name, color=cols[i], width=size*.25)
+        if v.variable_name == "Shallow Well Depth in NAVD88":
+            label = "Shallow Well Depth"
+        else:
+            label = v.variable_name
+        label += ' [{}]'.format(v.units)
+        ax.bar(ind, df[col], label=label, color=cols[i], width=size*.25)
         i += 1
-    ax.set_ylim(0, 110)
+    # ax.set_ylim(0, 110)
     ax.set_xlim(0, len(ind)*size)
-    ax.set_ylabel('Percentile')
-    ax.set_xticks(ind-.2*size)
-    ax.set_xticklabels(df.index.strftime("%Y-%m-%d"), rotation=90, ha='left')
-    lgd = ax.legend(bbox_to_anchor=(0.5, -0.3), loc='upper center')
+    if col == 'val_percentile':
+        ylab = 'percentile'
+    elif col == 'Value':
+        ylab = 'Value'
+    else:
+        ValueError('I do not know what the ylabel should be')
+    ax.set_ylabel(ylab)
+    ax.set_xlabel('Event')
+    ax.set_xticks(ind-.25*size)
+    ax.set_xticklabels(events, rotation=90, ha='left')
+    rcParams.update({'font.size': 11})
+    lgd = ax.legend(bbox_to_anchor=(0.1, -.4), loc='upper center', fontsize=11)
     fig.tight_layout()
-    fig.savefig("../Manuscript/pres/11.18.mtg/all.png",
+    fig.savefig("../Manuscript/pres/11.18.mtg/all_{}.png".format(col),
                 dpi=300,
                 bbox_extra_artists=(lgd,),
                 bbox_inches='tight')
@@ -192,4 +202,5 @@ def plot_3d():
     plt.show()
 
 
-all_plottable_dfs(plot=True)
+# all_plottable_dfs(plot=True)
+plot_together()
