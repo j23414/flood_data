@@ -5,9 +5,11 @@ from norfolk_flood_data.focus_intersection import dates
 from db_scripts.get_server_data import get_table_for_variable, Variable
 import numpy as np
 import math
+from mpl_toolkits.mplot3d import Axes3D
 
 
 def resample_df(df, agg_typ):
+    ori_df = df
     if agg_typ == 'mean':
         df = df.resample('D').mean()
     elif agg_typ == 'max':
@@ -16,6 +18,8 @@ def resample_df(df, agg_typ):
         df = df.resample('D').min()
     elif agg_typ == 'sum':
         df = df.resample('D').sum()
+    df['SiteId'] = ori_df.SiteID[0]
+    df['VariableID'] = ori_df.VariableID[0]
     return df
 
 
@@ -80,6 +84,7 @@ def autolabel(ax, rects, labs):
     i = 0
     for rect in rects:
         height = rect.get_height()
+        height = 0 if math.isnan(height) else height
         try:
             label = int(labs[i])
         except ValueError:
@@ -121,29 +126,48 @@ def plot_bars(df, col, variable_name, agg_typ, units):
     return df
 
 
-def plot_together():
-    plot_tide_data = get_plottable_df(4, 'max', dates)
-    plot_gw_data = get_plottable_df(6, 'mean', dates)
-    plot_rain_data = get_plottable_df(5, 'sum', dates, site_id=6)
-    df_list = [plot_tide_data, plot_gw_data, plot_rain_data]
+def plot_together(df_list):
     i = 0
-    fig, ax = plt.subplots()
-    cols = 'red', 'yellow', 'blue'
+    fig, ax = plt.subplots(figsize=(15, 5))
+    cols = '#a6cee3', '#d95f02', '#1f78b4'
     for df in df_list:
         v = Variable(df.VariableID.dropna()[0])
-        ind = np.arange(len(df.index)) + i*0.25
-        bars = ax.bar(ind, df.val_percentile, label=v.variable_name, color=cols[i], width=0.25)
+        size = 2
+        ind = np.arange(0, len(df.index)*size, size) + i*size*.25
+        ax.bar(ind, df.val_percentile, label=v.variable_name, color=cols[i], width=size*.25)
         i += 1
-        # autolabel(ax, bars, df.val_percentile)
     ax.set_ylim(0, 110)
-    ax.set_xlim(0, len(ind))
-    ax.set_title('test')
-    ax.set_xticks(ind)
-    ax.set_xticklabels(df.index.strftime("%Y-%m-%d"), rotation=78)
+    ax.set_xlim(0)
+    ax.set_ylabel('Percentile')
+    ax.set_xticks(ind-.2*size)
+    ax.set_xticklabels(df.index.strftime("%Y-%m-%d"), rotation=90, ha='left')
     lgd = ax.legend(bbox_to_anchor=(0.5, -0.3), loc='upper center')
     fig.tight_layout()
     fig.savefig("../Manuscript/pres/11.18.mtg/all.png", dpi=300, bbox_extra_artists=(lgd,), bbox_inches='tight')
     plt.show()
 
 
-plot_together()
+def plot_3d():
+    plot_tide_data = get_plottable_df(4, 'max', dates)
+    plot_gw_data = get_plottable_df(6, 'mean', dates)
+    plot_rain_data = get_plottable_df(5, 'sum', dates, site_id=6)
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    x0 = plot_tide_data.val_percentile
+    x1 = plot_gw_data.val_percentile
+    x2 = plot_rain_data.val_percentile
+    ax.scatter(x0, x1, x2)
+    ax.set_xlabel('Tide Percentile')
+    ax.set_ylabel('Shallow Well Percentile')
+    ax.set_zlabel('Rainfall Percentile')
+    ax.set_xlim(100, 0)
+    plt.show()
+
+
+plot_tide_data = get_plottable_df(4, 'max', dates)
+plot_gw_data = get_plottable_df(6, 'mean', dates)
+plot_rain_data = get_plottable_df(5, 'sum', dates, site_id=6)
+df_list = [plot_tide_data, plot_gw_data, plot_rain_data]
+plot_together(df_list)
+
+print dates
