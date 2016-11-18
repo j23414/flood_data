@@ -141,6 +141,7 @@ def append_non_duplicates(table, df, check_col):
 
 def get_db_table_as_df(name, sql="""SELECT * FROM {};"""):
     global con
+    sql = sql.format(name)
     if name == 'datavalues':
         date_col = 'Datetime'
     else:

@@ -2,13 +2,21 @@ import pandas as pd
 import os
 from get_server_data import get_id, append_non_duplicates, make_date_index
 
-data_dir = '../hrsd_data'
-data_files = []
-for dirpath, dirnames, filenames in os.walk(data_dir):
-    for filename in filenames:
-        if filename.startswith('MMPS-') and filename.endswith('.csv'):
-            data_files.append(filename)
 
+data_dir = '../hrsd_data'
+
+
+def get_file_list(site_nums):
+    global data_dir
+    data_files = []
+    for site_num in site_nums:
+        for dirpath, dirnames, filenames in os.walk(data_dir):
+            for filename in filenames:
+                if filename.startswith('MMPS-{}'.format(site_num)) and filename.endswith('.csv'):
+                    data_files.append(filename)
+    return data_files
+
+data_files = get_file_list(['170'])
 site_info_table = pd.read_csv("{}/site_info.csv".format(data_dir))
 variable_info_table = pd.read_csv("{}/variable_info.csv".format(data_dir))
 for data_file in data_files:
@@ -20,7 +28,7 @@ for data_file in data_files:
 
     if df.columns[1].startswith('Rain'):
         variable_code = 'Rainfall'
-    elif df.columns[1].startswith('Shallow Well'):
+    elif df.columns[1].startswith('Shallow Well') or df.columns[1].startswith('Level_NAVD88_ft'):
         variable_code = 'Shallow_well_depth'
     else:
         raise ValueError('I do not now what variable you are trying to insert')

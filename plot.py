@@ -137,7 +137,7 @@ def plot_together(df_list):
         ax.bar(ind, df.val_percentile, label=v.variable_name, color=cols[i], width=size*.25)
         i += 1
     ax.set_ylim(0, 110)
-    ax.set_xlim(0)
+    ax.set_xlim(0, len(ind)*size)
     ax.set_ylabel('Percentile')
     ax.set_xticks(ind-.2*size)
     ax.set_xticklabels(df.index.strftime("%Y-%m-%d"), rotation=90, ha='left')
