@@ -5,7 +5,7 @@ import pandas as pd
 import os
 
 dir = os.path.dirname(__file__)
-db_filename = os.path.join(dir, '../floodData.sqlite')
+db_filename = os.path.join(dir, '../../Manuscript/Data/floodData.sqlite')
 
 con = sqlite3.connect(db_filename)
 
