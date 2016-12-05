@@ -16,7 +16,7 @@ def get_file_list(site_nums):
                     data_files.append(filename)
     return data_files
 
-data_files = get_file_list(['170'])
+data_files = get_file_list(['177'])
 site_info_table = pd.read_csv("{}/site_info.csv".format(data_dir))
 variable_info_table = pd.read_csv("{}/variable_info.csv".format(data_dir))
 for data_file in data_files:

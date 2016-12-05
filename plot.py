@@ -62,7 +62,7 @@ def get_plottable_df(variable_id, agg_typ, site_id=None):
     return df
 
 
-def plot_indiv_variables(variable_id, agg_typ, site_id=None, plt_var='value', plot=False):
+def plot_indiv_variables(variable_id, agg_typ, site_id=None, plt_var='value', plot=False, **kwargs):
     """
     plots bar charts for a given variable given a list of dates
     :param plot:
@@ -86,11 +86,11 @@ def plot_indiv_variables(variable_id, agg_typ, site_id=None, plt_var='value', pl
             c = 'blue'
 
         if plt_var == 'scaled':
-            plot_bars(df, 'scaled', v.variable_name, agg_typ, 'Scaled', color=c)
+            plot_bars(df, 'scaled', v.variable_name, agg_typ, 'Scaled', color=c, **kwargs)
         elif plt_var == 'rank':
-            plot_bars(df, 'val_rank', v.variable_name, agg_typ, v.units, color=c)
+            plot_bars(df, 'val_rank', v.variable_name, agg_typ, v.units, color=c, **kwargs)
         elif plt_var == 'value':
-            plot_bars(df, 'Value', v.variable_name, agg_typ, v.units, color=c)
+            plot_bars(df, 'Value', v.variable_name, agg_typ, v.units, color=c, **kwargs)
     return df
 
 
@@ -112,7 +112,8 @@ def autolabel(ax, rects, labs):
         i += 1
 
 
-def plot_bars(df, col, variable_name, agg_typ, units, color='blue'):
+def plot_bars(df, col, variable_name, agg_typ, units, color='blue', **kwargs):
+    print "making figure for ", variable_name
     fig = plt.figure()
     ind = np.arange(len(df.index))
     gs = gridspec.GridSpec(2, 2, width_ratios=[3.5, 1], height_ratios=[1, 1])
@@ -139,7 +140,9 @@ def plot_bars(df, col, variable_name, agg_typ, units, color='blue'):
     width = 0.5
     ax1.bar((1-width)/2, 0.5, width=width, color=color)
     fig.tight_layout()
-    plt.savefig("../Manuscript/pres/11.18.mtg/{}_{}_events.png".format(variable_name, col), dpi=300)
+    file_dir = kwargs.get('file_dir', '../Manuscript/Figures')
+    file_name = kwargs.get('file_name', '{}_{}'.format(variable_name, col))
+    plt.savefig("{}/{}.png".format(file_dir, file_name), dpi=300)
     plt.close()
 
 
@@ -202,5 +205,23 @@ def plot_3d():
     plt.show()
 
 
-# all_plottable_dfs(plot=True)
-plot_together()
+def plot_rain_sites(site_ids):
+    for i in site_ids:
+        plot_indiv_variables(5,
+                             'sum',
+                             site_id=i,
+                             plot=True,
+                             file_name = 'rain_site{}'.format(i)
+                             )
+
+
+
+def main():
+    # all_plottable_dfs(plot=True)
+    # plot_together()
+    plot_rain_sites([4, 6, 7])
+
+
+if __name__ == "__main__":
+    main()
+
