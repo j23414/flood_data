@@ -2,7 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
 from norfolk_flood_data.focus_intersection import dates, events
-from db_scripts.get_server_data import get_table_for_variable, Variable
+from db_scripts.get_server_data import get_table_for_variable, Variable, fig_dir
 from matplotlib import rcParams
 import numpy as np
 import math
@@ -86,12 +86,27 @@ def plot_indiv_variables(variable_id, agg_typ, site_id=None, plt_var='value', pl
             c = 'blue'
 
         if plt_var == 'scaled':
-            plot_bars(df, 'scaled', v.variable_name, agg_typ, 'Scaled', color=c, **kwargs)
+            col = 'scaled'
+            units = 'Scaled'
         elif plt_var == 'rank':
-            plot_bars(df, 'val_rank', v.variable_name, agg_typ, v.units, color=c, **kwargs)
+            col = 'val_rank'
+            units = v.units
         elif plt_var == 'value':
-            plot_bars(df, 'Value', v.variable_name, agg_typ, v.units, color=c, **kwargs)
+            col = 'Value'
+            units = v.units
+        else:
+            raise ValueError('I do not know what variable to plot')
+        fig, ax0, ax1 = plot_bars(df, col, v.variable_name, agg_typ, units, color=c)
+        save_plot(fig, v.variable_name, col, **kwargs)
     return df
+
+
+def save_plot(fig, variable_name, col, **kwargs):
+    fig.tight_layout()
+    file_dir = kwargs.get('file_dir', fig_dir)
+    file_name = kwargs.get('file_name', '{}_{}'.format(variable_name, col))
+    plt.savefig("{}{}.png".format(file_dir, file_name), dpi=300)
+    plt.close()
 
 
 def autolabel(ax, rects, labs):
@@ -112,7 +127,7 @@ def autolabel(ax, rects, labs):
         i += 1
 
 
-def plot_bars(df, col, variable_name, agg_typ, units, color='blue', **kwargs):
+def plot_bars(df, col, variable_name, agg_typ, units, color='blue'):
     print "making figure for ", variable_name
     fig = plt.figure()
     ind = np.arange(len(df.index))
@@ -139,11 +154,7 @@ def plot_bars(df, col, variable_name, agg_typ, units, color='blue', **kwargs):
     ax1.set_title('Legend')
     width = 0.5
     ax1.bar((1-width)/2, 0.5, width=width, color=color)
-    fig.tight_layout()
-    file_dir = kwargs.get('file_dir', '../Manuscript/Figures')
-    file_name = kwargs.get('file_name', '{}_{}'.format(variable_name, col))
-    plt.savefig("{}/{}.png".format(file_dir, file_name), dpi=300)
-    plt.close()
+    return fig, ax0, ax1
 
 
 def all_plottable_dfs(plot=False):
@@ -215,12 +226,11 @@ def plot_rain_sites(site_ids):
                              )
 
 
-
 def main():
-    # all_plottable_dfs(plot=True)
+    all_plottable_dfs(plot=True)
     # plot_together()
-    plot_rain_sites([4, 6, 7])
-
+    # plot_rain_sites([4, 6, 7])
+    plot_indiv_variables(4, 'max', plot=True, file_name='test_restr')
 
 if __name__ == "__main__":
     main()

@@ -7,6 +7,7 @@ import os
 dir = os.path.dirname(__file__)
 db_filename = os.path.join(dir, '../../Manuscript/Data/floodData.sqlite')
 
+fig_dir = os.path.join(dir, "../../Manuscript/Figures/general/")
 con = sqlite3.connect(db_filename)
 
 
