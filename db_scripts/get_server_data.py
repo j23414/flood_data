@@ -154,6 +154,13 @@ def get_db_table_as_df(name, sql="""SELECT * FROM {};"""):
 
 
 def get_table_for_variable(variable_id):
+    if variable_id == 'tide':
+        variable_id = 4
+    elif variable_id == 'rainfall':
+        variable_id = 5
+    elif variable_id == 'groundwater':
+        variable_id = 6
+
     table_name = 'datavalues'
     sql = """SELECT * FROM {} WHERE VariableID={};""".format(table_name, variable_id)
     df = get_db_table_as_df(table_name, sql=sql)
