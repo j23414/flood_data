@@ -3,6 +3,7 @@ import requests
 import bs4
 import pandas as pd
 import os
+import numpy as np
 
 dir = os.path.dirname(__file__)
 db_filename = os.path.join(dir, '../../Manuscript/Data/floodData.sqlite')
@@ -164,6 +165,19 @@ def get_table_for_variable(variable_id):
     table_name = 'datavalues'
     sql = """SELECT * FROM {} WHERE VariableID={};""".format(table_name, variable_id)
     df = get_db_table_as_df(table_name, sql=sql)
+    df = df.sort_index()
+    if variable_id == 6:
+        # remove all 0.85 and 1.85 values as suggested by HRSD personnel
+        df['Value'] = np.where(
+            np.logical_and(df['Value'] > 0.84, df['Value'] < 0.86),
+            np.nan,
+            df['Value']
+        )
+        df['Value'] = np.where(
+            np.logical_and(df['Value'] > 1.84, df['Value'] < 1.86),
+            np.nan,
+            df['Value']
+        )
     return df
 
 

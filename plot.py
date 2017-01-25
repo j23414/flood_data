@@ -1,14 +1,37 @@
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
 from norfolk_flood_data.focus_intersection import events
-from db_scripts.get_server_data import Variable, fig_dir
+from db_scripts.get_server_data import Variable, fig_dir, get_table_for_variable
 from matplotlib import rcParams
 import numpy as np
 import math
-from db_scripts.data_utils import get_plottable_df
+from db_scripts.data_utils import resample_df, normalize, rank, percentile, filter_df_by_dates, \
+    account_for_elev, hampel_filter
 from mpl_toolkits.mplot3d import Axes3D
 
 cols = '#a6cee3', '#d95f02', '#1f78b4'
+
+
+def get_plottable_df(variable_id, agg_typ, site_id=None):
+    df = get_table_for_variable(variable_id)
+    if site_id:
+        df = df[df.SiteID == site_id]
+    df = resample_df(df, agg_typ)
+
+    if variable_id == 5:
+        # take out days with no rain
+        df = df[df.Value != 0]
+
+    if variable_id == 6:
+        df = account_for_elev(df, elev_threshold=7.5)
+        df = hampel_filter(df, 'Value', 30, threshold=3)
+
+    df = normalize(df)
+    df = rank(df)
+    df = percentile(df)
+    df = filter_df_by_dates(df)
+    df['Value'].fillna(0, inplace=True)
+    return df
 
 
 def plot_indiv_variables(variable_id, agg_typ, site_id=None, plt_var='value', plot=False, **kwargs):
@@ -99,7 +122,7 @@ def plot_bars(df, col, variable_name, agg_typ, units, color='blue'):
     # ax0.set_xticklabels(events, rotation=90)
     ax0.set_xticklabels(df.index.strftime("%Y-%m-%d"), rotation=90)
     ax0.set_ylabel(units)
-    ax0.set_xlabel('Event')
+    ax0.set_xlabel('Event Date')
     ax0.set_xlim(0, len(ind))
     ax0.set_ylim(ymax=df[col].max()*1.1)
     ax0.set_title("{}: {}".format(variable_name, agg_typ), fontsize=fontsize)
@@ -150,14 +173,15 @@ def plot_together(col='Value'):
     else:
         ValueError('I do not know what the ylabel should be')
     ax.set_ylabel(ylab)
-    ax.set_xlabel('Event')
+    ax.set_xlabel('Event Date')
     ax.set_xticks(ind-.25*size)
-    ax.set_xticklabels(events, rotation=90, ha='left')
+    # ax.set_xticklabels(events, rotation=90, ha='left')
+    ax.set_xticklabels(df.index.strftime("%Y-%m-%d"), rotation=90, ha='left')
     plot_indicator_line(ax, 3.23, label=" ")
     rcParams.update({'font.size': 11})
     lgd = ax.legend(bbox_to_anchor=(0.1, -.4), loc='upper center', fontsize=11)
     fig.tight_layout()
-    fig.savefig("{}all_{}.png".format(fig_dir, col),
+    fig.savefig("{}all_{}_dates.png".format(fig_dir, col),
                 dpi=300,
                 bbox_extra_artists=(lgd,),
                 bbox_inches='tight')
@@ -184,15 +208,28 @@ def plot_rain_sites(site_ids):
                              'sum',
                              site_id=i,
                              plot=True,
-                             file_name = 'rain_site{}'.format(i)
+                             file_name='rain_site{}'.format(i)
                              )
+
+
+def plot_time_series(variable_id, filt=True):
+    df = get_table_for_variable(variable_id)
+    fig, ax = plt.subplots()
+    if variable_id == 6 and filt:
+        df = account_for_elev(df, elev_threshold=7.5)
+        df = hampel_filter(df, 'Value', 30, threshold=3)
+
+    ax.plot(df.Value)
+    plt.xticks(rotation=90)
+    plt.show()
 
 
 def main():
     # all_plottable_dfs(plot=True)
     # plot_together()
     # get_plottable_df(5, 'sum', site_id=6)
-    plot_indiv_variables(4, 'max', plot=True, file_name='tide_line_dates')
+    # plot_indiv_variables(6, 'max', plot=True, file_name='shallow_well_filt_max')
+    plot_time_series(6)
 
 if __name__ == "__main__":
     main()

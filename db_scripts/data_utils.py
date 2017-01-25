@@ -1,6 +1,6 @@
 from norfolk_flood_data.focus_intersection import int_flood_dates
 import pandas as pd
-from get_server_data import get_table_for_variable
+import numpy as np
 
 
 def filter_df_by_dates(df, dates=int_flood_dates):
@@ -25,22 +25,6 @@ def normalize(df):
     return df
 
 
-def get_plottable_df(variable_id, agg_typ, site_id=None):
-    df = get_table_for_variable(variable_id)
-    if site_id:
-        df = df[df.SiteID == site_id]
-    df = resample_df(df, agg_typ)
-    if variable_id == 5:
-        # take out days with no rain
-        df = df[df.Value != 0]
-    df = normalize(df)
-    df = rank(df)
-    df = percentile(df)
-    df = filter_df_by_dates(df)
-    df['Value'].fillna(0, inplace=True)
-    return df
-
-
 def resample_df(df, agg_typ):
     ori_df = df
     if agg_typ == 'mean':
@@ -54,6 +38,22 @@ def resample_df(df, agg_typ):
     df['SiteID'] = ori_df.SiteID[0]
     df['VariableID'] = ori_df.VariableID[0]
     return df
+
+
+def account_for_elev(df, elev_threshold=10):
+    cleaned = np.where(df['Value'] > elev_threshold, np.nan, df['Value'])
+    df['Value'] = cleaned
+    return df
+
+
+def hampel_filter(df, col, k, threshold=2):
+    df['rolling_median'] = df[col].rolling(k).median()
+    df['rolling_std'] = df[col].rolling(k).std()
+    df['num_sigma'] = abs(df[col]-df['rolling_median'])/df['rolling_std']
+    df['Value'] = np.where(df['num_sigma'] > threshold, df['rolling_median'], df[col])
+    df = df[['ValueID', 'Value', 'VariableID', 'SiteID']]
+    return df
+
 
 
 
