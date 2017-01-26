@@ -40,9 +40,9 @@ def resample_df(df, agg_typ):
     return df
 
 
-def account_for_elev(df, elev_threshold=10):
-    cleaned = np.where(df['Value'] > elev_threshold, np.nan, df['Value'])
-    df['Value'] = cleaned
+def account_for_elev(df, elev_threshold=10, col='Value'):
+    cleaned = np.where(df[col] > elev_threshold, np.nan, df[col])
+    df[col] = cleaned
     return df
 
 
@@ -50,8 +50,10 @@ def hampel_filter(df, col, k, threshold=2):
     df['rolling_median'] = df[col].rolling(k).median()
     df['rolling_std'] = df[col].rolling(k).std()
     df['num_sigma'] = abs(df[col]-df['rolling_median'])/df['rolling_std']
-    df['Value'] = np.where(df['num_sigma'] > threshold, df['rolling_median'], df[col])
-    df = df[['ValueID', 'Value', 'VariableID', 'SiteID']]
+    df[col] = np.where(df['num_sigma'] > threshold, df['rolling_median'], df[col])
+    del df['rolling_median']
+    del df['rolling_std']
+    del df['num_sigma']
     return df
 
 

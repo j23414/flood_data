@@ -230,7 +230,7 @@ def plot_time_series(variable_id, filt=True):
     fig, ax = plt.subplots()
     if variable_id == 6 and filt:
         df = account_for_elev(df, elev_threshold=7.5)
-        df = hampel_filter(df, 'Value', 30, threshold=3)
+        df = hampel_filter(df, 'Value', 15, threshold=2)
 
     ax.plot(df.Value)
     plt.xticks(rotation=90)
@@ -238,12 +238,6 @@ def plot_time_series(variable_id, filt=True):
 
 
 def plot_surrounding_dates(plus_or_minus_days):
-    """
-
-    :param args: same as plot_indiv_variable
-    :param kwargs: same as plot_indiv_variable
-    :return:
-    """
     new_dates = int_flood_dates
     for i in range(plus_or_minus_days):
         # plus_one_day = int_flood_dates + timedelta(days=i + 1)
@@ -264,9 +258,9 @@ def main():
     # all_plottable_dfs(plot=True)
     # plot_together()
     # get_plottable_df(5, 'sum', site_id=6)
-    # plot_time_series(6)
+    plot_time_series(6)
     # plot_all_separately()
-    plot_surrounding_dates(3)
+    # plot_surrounding_dates(3)
 
 
 if __name__ == "__main__":
