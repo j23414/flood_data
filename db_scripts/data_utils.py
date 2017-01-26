@@ -1,4 +1,4 @@
-from norfolk_flood_data.focus_intersection import int_flood_dates
+from flood_data.norfolk_flood_data.focus_intersection import int_flood_dates
 import pandas as pd
 import numpy as np
 

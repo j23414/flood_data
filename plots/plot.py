@@ -1,14 +1,14 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
-from norfolk_flood_data.focus_intersection import events
-from db_scripts.get_server_data import Variable, fig_dir, get_table_for_variable
+from flood_data.norfolk_flood_data.focus_intersection import events
+from flood_data.db_scripts.get_server_data import Variable, fig_dir, get_table_for_variable
 from matplotlib import rcParams
 import numpy as np
 import math
-from db_scripts.data_utils import resample_df, normalize, rank, percentile, filter_df_by_dates, \
+from flood_data.db_scripts.data_utils import resample_df, normalize, rank, percentile, filter_df_by_dates, \
     account_for_elev, hampel_filter
-from norfolk_flood_data.focus_intersection import int_flood_dates
+from flood_data.norfolk_flood_data.focus_intersection import int_flood_dates
 from mpl_toolkits.mplot3d import Axes3D
 from datetime import timedelta
 
@@ -37,8 +37,7 @@ def get_plottable_df(variable_id, agg_typ, site_id=None, dates=int_flood_dates):
     return df
 
 
-def plot_indiv_variables(variable_id, agg_typ, site_id=None, plt_var='value', plot=False,
-                         dates=int_flood_dates, fontsize=10, figsize=(5,4), **kwargs):
+def plot_indiv_variable(variable_id, agg_typ, site_id=None, plt_var='value', dates=int_flood_dates, **kwargs):
     """
     plots bar charts for a given variable given a list of dates
     :param plot:
@@ -51,35 +50,30 @@ def plot_indiv_variables(variable_id, agg_typ, site_id=None, plt_var='value', pl
     """
     df = get_plottable_df(variable_id, agg_typ, site_id, dates)
     v = Variable(variable_id)
-    if plot:
-        global cols
-        if variable_id == 4:
-            c = cols[0]
-        elif variable_id == 6:
-            c = cols[1]
-        elif variable_id == 5:
-            c = cols[2]
-        else:
-            c = 'blue'
+    if variable_id == 4:
+        c = cols[0]
+    elif variable_id == 6:
+        c = cols[1]
+    elif variable_id == 5:
+        c = cols[2]
+    else:
+        c = 'blue'
 
-        if plt_var == 'scaled':
-            col = 'scaled'
-            units = 'Scaled'
-        elif plt_var == 'rank':
-            col = 'val_rank'
-            units = v.units
-        elif plt_var == 'value':
-            col = 'Value'
-            units = v.units
-        else:
-            raise ValueError('I do not know what variable to plot')
-        fig, ax0, ax1 = plot_bars(df, col, v.variable_name, agg_typ, units, color=c,
-                                  fontsize=fontsize, figsize=figsize)
-        if variable_id == 4:
-            plot_indicator_line(ax0, 3.2, units="ft")
-        plt.show()
-        save_plot(fig, v.variable_name, col, **kwargs)
-    return df
+    if plt_var == 'scaled':
+        col = 'scaled'
+        units = 'Scaled'
+    elif plt_var == 'rank':
+        col = 'val_rank'
+        units = v.units
+    elif plt_var == 'value':
+        col = 'Value'
+        units = v.units
+    else:
+        raise ValueError('I do not know what variable to plot')
+    fig, ax0 = plot_bars(df, col, v.variable_name, agg_typ, units, color=c, **kwargs)
+    if variable_id == 4:
+        plot_indicator_line(ax0, 3.2, units="ft")
+    return fig, ax0
 
 
 def plot_indicator_line(ax, val, label="", units="", **kwargs):
@@ -116,42 +110,55 @@ def autolabel(ax, rects, labs):
         i += 1
 
 
-def plot_bars(df, col, variable_name, agg_typ, units, color='blue', fontsize=10, figsize=(5, 4)):
+def plot_bars(df, col, variable_name, agg_typ, units, color='blue', fontsize=10, figsize=(5, 4), legend_plot=False, **kwargs):
     print "making figure for ", variable_name
     fig = plt.figure(figsize=figsize)
     ind = np.arange(len(df.index))
-    gs = gridspec.GridSpec(2, 2, width_ratios=[3.5, 1], height_ratios=[1, 1])
-    ax0 = plt.subplot(gs[:, 0])
+    if legend_plot:
+        gs = gridspec.GridSpec(2, 2, width_ratios=[3.5, 1], height_ratios=[1, 1])
+        ax0 = plt.subplot(gs[:, 0])
+        ax1 = plt.subplot(gs[-1])
+        ax1.set_xlim(0, 1)
+        ax1.set_ylim(0, 1)
+        ax1.xaxis.set_ticklabels([])
+        ax1.yaxis.set_ticklabels([])
+        ax1.text(0.5, 0.5, "percentile",
+                 multialignment='center', rotation=20, ha='center', va='bottom')
+        ax1.set_title('Legend')
+        width = 0.5
+        ax1.bar((1 - width) / 2, 0.5, width=width, color=color)
+    else:
+        ax0 = fig.add_subplot(111)
     bars = ax0.bar(ind, df[col], color=color)
     autolabel(ax0, bars, df.val_percentile)
     ax0.set_xticks(ind+0.5)
     # ax0.set_xticklabels(events, rotation=90)
     ax0.set_xticklabels(df.index.strftime("%Y-%m-%d"), rotation=90)
+    for label in ax0.get_xticklabels():
+        if label._text in str(int_flood_dates):
+            label._fontproperties._weight = 'bold'
     ax0.set_ylabel(units)
     ax0.set_xlabel('Event Date')
     ax0.set_xlim(0, len(ind))
     ax0.set_ylim(ymax=df[col].max()*1.1)
     ax0.set_title("{}: {}".format(variable_name, agg_typ), fontsize=fontsize)
 
-    ax1 = plt.subplot(gs[-1])
-    ax1.set_xlim(0, 1)
-    ax1.set_ylim(0, 1)
-    ax1.xaxis.set_ticklabels([])
-    ax1.yaxis.set_ticklabels([])
-    ax1.text(0.5, 0.5, "percentile",
-             multialignment='center', rotation=20, ha='center', va='bottom')
-    ax1.set_title('Legend')
-    width = 0.5
-    ax1.bar((1-width)/2, 0.5, width=width, color=color)
     rcParams.update({'font.size': fontsize})
-    return fig, ax0, ax1
+    return fig, ax0
 
 
-def all_plottable_dfs(plot=False):
-    plot_tide_data = plot_indiv_variables(4, 'max', plot=plot)
-    plot_gw_data = plot_indiv_variables(6, 'mean', plot=plot)
-    plot_rain_data = plot_indiv_variables(5, 'sum', site_id=7, plot=plot)
+def all_plottable_dfs(site_id=None):
+    plot_tide_data = get_plottable_df(4, 'max')
+    plot_gw_data = get_plottable_df(6, 'mean')
+    plot_rain_data = get_plottable_df(5, 'sum', site_id=site_id)
     return plot_tide_data, plot_gw_data, plot_rain_data
+
+
+def plot_all_separately(**kwargs):
+    variables = [(4, 'max'), (6, 'mean'), (5, 'sum')]
+    for v in variables:
+        fig, ax0 = plot_indiv_variable(*v, plt_var='value')
+        save_plot(fig, Variable(v[0]).variable_name, 'value')
 
 
 def plot_together(col='Value'):
@@ -210,12 +217,12 @@ def plot_3d():
 
 def plot_rain_sites(site_ids):
     for i in site_ids:
-        plot_indiv_variables(5,
+        plot_indiv_variable(5,
                              'sum',
-                             site_id=i,
-                             plot=True,
-                             file_name='rain_site{}'.format(i)
-                             )
+                            site_id=i,
+                            plot=True,
+                            file_name='rain_site{}'.format(i)
+                            )
 
 
 def plot_time_series(variable_id, filt=True):
@@ -230,17 +237,37 @@ def plot_time_series(variable_id, filt=True):
     plt.show()
 
 
+def plot_surrounding_dates(plus_or_minus_days):
+    """
+
+    :param args: same as plot_indiv_variable
+    :param kwargs: same as plot_indiv_variable
+    :return:
+    """
+    new_dates = int_flood_dates
+    for i in range(plus_or_minus_days):
+        # plus_one_day = int_flood_dates + timedelta(days=i + 1)
+        minus_one_day = int_flood_dates + timedelta(days=-i - 1)
+        new_dates = pd.concat([new_dates, minus_one_day])
+    new_dates.drop_duplicates(inplace=True)
+    new_dates.sort_values(inplace=True)
+    fig, ax0 = plot_indiv_variable(5, 'sum', site_id=6, plot=True, dates=new_dates,
+                        fontsize=13, figsize=(15, 7))
+    fig.add_axes(ax0)
+    fig.tight_layout()
+    fig.savefig('{}/rainfall_previous_days.png'.format(fig_dir), dpi=300)
+    plt.show()
+    print 'test'
+
+
 def main():
     # all_plottable_dfs(plot=True)
     # plot_together()
     # get_plottable_df(5, 'sum', site_id=6)
-    plus_one_day = int_flood_dates + timedelta(days=1)
-    minus_one_day = int_flood_dates + timedelta(days=-1)
-    new_dates = pd.concat([int_flood_dates, plus_one_day, minus_one_day])
-    new_dates.drop_duplicates(inplace=True)
-    new_dates.sort_values(inplace=True)
-    plot_indiv_variables(5, 'sum', site_id=6, plot=True, file_name='rainfall_surrounding_dates', dates=new_dates)
     # plot_time_series(6)
+    # plot_all_separately()
+    plot_surrounding_dates(3)
+
 
 if __name__ == "__main__":
     main()

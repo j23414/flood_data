@@ -5,10 +5,10 @@ import pandas as pd
 import os
 import numpy as np
 
-dir = os.path.dirname(__file__)
-db_filename = os.path.join(dir, '../../Manuscript/Data/floodData.sqlite')
+directory = os.path.dirname(__file__)
+db_filename = os.path.join(directory, '../../Manuscript/Data/floodData.sqlite')
 
-fig_dir = os.path.join(dir, "../../Manuscript/Figures/general/")
+fig_dir = os.path.join(directory, "../../Manuscript/Figures/general/")
 con = sqlite3.connect(db_filename)
 
 
