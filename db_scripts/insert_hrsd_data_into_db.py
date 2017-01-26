@@ -31,7 +31,7 @@ data_files = get_file_list(['170'])
 site_info_table = pd.read_csv("{}/site_info.csv".format(data_dir))
 variable_info_table = pd.read_csv("{}/variable_info.csv".format(data_dir))
 for data_file in data_files:
-    df = pd.read_csv("{}/inserted/{}".format(data_dir, data_file))
+    df = pd.read_csv("{}/raw/{}".format(data_dir, data_file))
 
     site_code = data_file.split('_')[0]
     site_info = site_info_table[site_info_table.SiteCode == site_code].to_dict('records')[0]

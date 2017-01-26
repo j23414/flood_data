@@ -1,13 +1,11 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
-from flood_data.norfolk_flood_data.focus_intersection import events
 from flood_data.db_scripts.get_server_data import Variable, fig_dir, get_table_for_variable
 from matplotlib import rcParams
 import numpy as np
 import math
-from flood_data.db_scripts.data_utils import resample_df, normalize, rank, percentile, filter_df_by_dates, \
-    account_for_elev, hampel_filter
+from flood_data.db_scripts.data_utils import resample_df, normalize, rank, percentile, filter_df_by_dates
 from flood_data.norfolk_flood_data.focus_intersection import int_flood_dates
 from mpl_toolkits.mplot3d import Axes3D
 from datetime import timedelta
@@ -24,10 +22,6 @@ def get_plottable_df(variable_id, agg_typ, site_id=None, dates=int_flood_dates):
     if variable_id == 5:
         # take out days with no rain
         df = df[df.Value != 0]
-
-    if variable_id == 6:
-        df = account_for_elev(df, elev_threshold=7.5)
-        df = hampel_filter(df, 'Value', 30, threshold=3)
 
     df = normalize(df)
     df = rank(df)
@@ -227,13 +221,15 @@ def plot_rain_sites(site_ids):
 
 def plot_time_series(variable_id, filt=True):
     df = get_table_for_variable(variable_id)
+    # df['Value'] = np.where(df.index > "2015-09-23", df['Value']-0.85, df['Value'])
     fig, ax = plt.subplots()
-    if variable_id == 6 and filt:
-        df = account_for_elev(df, elev_threshold=7.5)
-        df = hampel_filter(df, 'Value', 15, threshold=2)
-
-    ax.plot(df.Value)
+    ax.plot(df['Value'])
+    ax.set_xlabel('Date')
+    ax.set_ylabel('Shallow well depth (ft above NAVD88)')
     plt.xticks(rotation=90)
+    plot_indicator_line(ax, 1.85)
+    plot_indicator_line(ax, 0.85)
+    fig.tight_layout()
     plt.show()
 
 
