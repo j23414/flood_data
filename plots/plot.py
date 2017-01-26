@@ -1,3 +1,4 @@
+import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
 from norfolk_flood_data.focus_intersection import events
@@ -7,12 +8,14 @@ import numpy as np
 import math
 from db_scripts.data_utils import resample_df, normalize, rank, percentile, filter_df_by_dates, \
     account_for_elev, hampel_filter
+from norfolk_flood_data.focus_intersection import int_flood_dates
 from mpl_toolkits.mplot3d import Axes3D
+from datetime import timedelta
 
 cols = '#a6cee3', '#d95f02', '#1f78b4'
 
 
-def get_plottable_df(variable_id, agg_typ, site_id=None):
+def get_plottable_df(variable_id, agg_typ, site_id=None, dates=int_flood_dates):
     df = get_table_for_variable(variable_id)
     if site_id:
         df = df[df.SiteID == site_id]
@@ -29,12 +32,13 @@ def get_plottable_df(variable_id, agg_typ, site_id=None):
     df = normalize(df)
     df = rank(df)
     df = percentile(df)
-    df = filter_df_by_dates(df)
+    df = filter_df_by_dates(df, dates)
     df['Value'].fillna(0, inplace=True)
     return df
 
 
-def plot_indiv_variables(variable_id, agg_typ, site_id=None, plt_var='value', plot=False, **kwargs):
+def plot_indiv_variables(variable_id, agg_typ, site_id=None, plt_var='value', plot=False,
+                         dates=int_flood_dates, fontsize=10, figsize=(5,4), **kwargs):
     """
     plots bar charts for a given variable given a list of dates
     :param plot:
@@ -42,9 +46,10 @@ def plot_indiv_variables(variable_id, agg_typ, site_id=None, plt_var='value', pl
     :param variable_id: 4-tide level, 5-rainfall, 6-shallow well depth
     :param agg_typ: how to aggregate the data on the daily time step ('min', 'max', 'mean', 'sum')
     :param site_id: site_id on which to filter (mostly for rainfall since there are multiple gauges
+    :param dates: list of dates for which you want the plot
     :return:
     """
-    df = get_plottable_df(variable_id, agg_typ, site_id)
+    df = get_plottable_df(variable_id, agg_typ, site_id, dates)
     v = Variable(variable_id)
     if plot:
         global cols
@@ -68,9 +73,11 @@ def plot_indiv_variables(variable_id, agg_typ, site_id=None, plt_var='value', pl
             units = v.units
         else:
             raise ValueError('I do not know what variable to plot')
-        fig, ax0, ax1 = plot_bars(df, col, v.variable_name, agg_typ, units, color=c)
+        fig, ax0, ax1 = plot_bars(df, col, v.variable_name, agg_typ, units, color=c,
+                                  fontsize=fontsize, figsize=figsize)
         if variable_id == 4:
             plot_indicator_line(ax0, 3.2, units="ft")
+        plt.show()
         save_plot(fig, v.variable_name, col, **kwargs)
     return df
 
@@ -109,10 +116,9 @@ def autolabel(ax, rects, labs):
         i += 1
 
 
-def plot_bars(df, col, variable_name, agg_typ, units, color='blue'):
+def plot_bars(df, col, variable_name, agg_typ, units, color='blue', fontsize=10, figsize=(5, 4)):
     print "making figure for ", variable_name
-    fontsize = 10
-    fig = plt.figure(figsize=(5, 4))
+    fig = plt.figure(figsize=figsize)
     ind = np.arange(len(df.index))
     gs = gridspec.GridSpec(2, 2, width_ratios=[3.5, 1], height_ratios=[1, 1])
     ax0 = plt.subplot(gs[:, 0])
@@ -228,8 +234,13 @@ def main():
     # all_plottable_dfs(plot=True)
     # plot_together()
     # get_plottable_df(5, 'sum', site_id=6)
-    # plot_indiv_variables(6, 'max', plot=True, file_name='shallow_well_filt_max')
-    plot_time_series(6)
+    plus_one_day = int_flood_dates + timedelta(days=1)
+    minus_one_day = int_flood_dates + timedelta(days=-1)
+    new_dates = pd.concat([int_flood_dates, plus_one_day, minus_one_day])
+    new_dates.drop_duplicates(inplace=True)
+    new_dates.sort_values(inplace=True)
+    plot_indiv_variables(5, 'sum', site_id=6, plot=True, file_name='rainfall_surrounding_dates', dates=new_dates)
+    # plot_time_series(6)
 
 if __name__ == "__main__":
     main()
