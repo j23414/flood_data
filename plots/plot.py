@@ -1,15 +1,18 @@
+import os
+import sys
+directory = os.path.dirname(__file__)
+sys.path.insert(0, 'C:/Users/jeff/Documents/research/Sadler_3rdPaper/flood_data')
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
-from flood_data.db_scripts.get_server_data import Variable, fig_dir, get_table_for_variable
+from db_scripts.get_server_data import Variable, fig_dir, get_table_for_variable
 from matplotlib import rcParams
 import numpy as np
 import math
-from flood_data.db_scripts.data_utils import resample_df, normalize, rank, percentile, filter_df_by_dates
-from flood_data.norfolk_flood_data.focus_intersection import int_flood_dates
+from db_scripts.data_utils import resample_df, normalize, rank, percentile, filter_df_by_dates
+from norfolk_flood_data.focus_intersection import int_flood_dates
 from mpl_toolkits.mplot3d import Axes3D
 from datetime import timedelta
-
 cols = '#a6cee3', '#d95f02', '#1f78b4'
 
 
