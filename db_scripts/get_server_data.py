@@ -6,9 +6,11 @@ import os
 import numpy as np
 
 directory = os.path.dirname(__file__)
-db_filename = os.path.join(directory, '../../Manuscript/Data/floodData.sqlite')
+base_manuscript_dir = os.path.join(directory, '../../Manuscript/')
+data_dir = os.path.join(base_manuscript_dir, 'Data')
+fig_dir = os.path.join(base_manuscript_dir, "/Figures/general/")
 
-fig_dir = os.path.join(directory, "../../Manuscript/Figures/general/")
+db_filename = os.path.join(data_dir, 'floodData.sqlite')
 con = sqlite3.connect(db_filename)
 
 
@@ -154,7 +156,7 @@ def get_db_table_as_df(name, sql="""SELECT * FROM {};"""):
     return df
 
 
-def get_table_for_variable(variable_id):
+def get_table_for_variable(variable_id, site_id=None):
     if variable_id == 'tide':
         variable_id = 4
     elif variable_id == 'rainfall':
@@ -178,6 +180,8 @@ def get_table_for_variable(variable_id):
             np.nan,
             df['Value']
         )
+    if site_id:
+        df = df[df['SiteID'] == site_id]
     return df
 
 
