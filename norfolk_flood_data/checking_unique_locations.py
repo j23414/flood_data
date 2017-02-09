@@ -1,6 +1,6 @@
 # coding: utf-8
 import pandas as pd
-
+from flood_data.db_scripts.get_server_data import data_dir
 
 def clean_lists(l, first):
     combined = [a[0] + "&" + a[1] for a in l]
@@ -13,7 +13,7 @@ def clean_lists(l, first):
     return combined_clean
 
 
-df1 = pd.read_csv('STORM_data_flooded_streets_2010-2016_orig.csv')
+df1 = pd.read_csv('{}/norfolk_flooded_roads_data/STORM_data_flooded_streets_2010-2016_orig.csv'.format(data_dir))
 df1['location'] = df1['location'].str.strip()
 locations = df1.loc[:,'location']
 locations = pd.Series(locations.unique())
@@ -37,4 +37,4 @@ b_list = [(d.split(',')[0], d.split(',')[1]) for d in lists]
 a_list = clean_lists(a_list, 1)
 b_list = clean_lists(b_list, 0)
 dups = pd.DataFrame({'a': a_list, 'b': b_list})
-dups.to_csv('duplicates.csv')
+dups.to_csv('{}/norfolk_flooded_roads_data/duplicates.csv'.format(data_dir))

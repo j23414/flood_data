@@ -1,5 +1,6 @@
 import pandas as pd
-df = pd.read_csv('STORM_data_flooded_streets_2010-2016_orig.csv')
+from flood_data.db_scripts.get_server_data import data_dir
+df = pd.read_csv('{}/norfolk_flooded_roads_data/STORM_data_flooded_streets_2010-2016_orig.csv'.format(data_dir))
 df['location'] = df['location'].str.strip()
 df_dups = pd.read_csv('duplicates.csv')
 
@@ -13,4 +14,4 @@ for i in range(len(df.location)):
             dup.append(df_dups.a[j])
             print df_dups.a[j]
 pd.Series(dup).to_csv('duplicates_removed.csv')
-df.to_csv('STORM_data_flooded_streets_2010-2016_no_duplicates.csv')
+df.to_csv('{}/norfolk_flooded_roads_data/STORM_data_flooded_streets_2010-2016_no_duplicates.csv'.format(data_dir))
