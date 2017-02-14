@@ -1,6 +1,6 @@
-from db_scripts.get_server_data import get_table_for_variable, data_dir
+from flood_data.db_scripts.get_server_data import get_table_for_variable, data_dir
 import pandas as pd
-from norfolk_flood_data.focus_intersection import int_flood_dates
+from flood_data.norfolk_flood_data.focus_intersection import int_flood_dates
 
 # for each variable get df
 tide_df = get_table_for_variable('tide')

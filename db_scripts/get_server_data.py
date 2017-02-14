@@ -7,8 +7,8 @@ import numpy as np
 
 directory = os.path.dirname(__file__)
 base_manuscript_dir = os.path.join(directory, '../../Manuscript/')
-data_dir = os.path.join(base_manuscript_dir, 'Data')
-fig_dir = os.path.join(base_manuscript_dir, "/Figures/general/")
+data_dir = os.path.join(base_manuscript_dir, 'Data/')
+fig_dir = os.path.join(base_manuscript_dir, "Figures/general/")
 
 db_filename = os.path.join(data_dir, 'floodData.sqlite')
 con = sqlite3.connect(db_filename)
