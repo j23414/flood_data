@@ -1,6 +1,6 @@
-from norfolk_flood_data.focus_intersection import all_flood_dates
 from db_scripts.data_utils import resample_df, filter_df_by_dates
 from db_scripts.get_server_data import get_table_for_variable
+from flood_data.db_scripts.focus_intersection import all_flood_dates
 
 
 def number_of_flood_dates_over_threshold(threshold=3.2, units="feet"):

@@ -1,6 +1,7 @@
-from flood_data.norfolk_flood_data.focus_intersection import int_flood_dates
-import pandas as pd
 import numpy as np
+import pandas as pd
+
+from flood_data.db_scripts.focus_intersection import int_flood_dates
 
 
 def filter_df_by_dates(df, dates=int_flood_dates):

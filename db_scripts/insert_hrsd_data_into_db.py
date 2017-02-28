@@ -1,10 +1,10 @@
 import numpy as np
 import pandas as pd
 import os
-from get_server_data import get_id, append_non_duplicates, make_date_index
+from get_server_data import get_id, append_non_duplicates, make_date_index, data_dir
 from data_utils import hampel_filter, account_for_elev
 
-data_dir = '../hrsd_data'
+data_dir = '{}hrsd_data'.format(data_dir)
 
 
 def qc_shallow_well_data(df):
@@ -27,7 +27,7 @@ def get_file_list(site_nums):
                     data_files.append(filename)
     return data_files
 
-data_files = get_file_list(['170'])
+data_files = get_file_list(['003'])
 site_info_table = pd.read_csv("{}/site_info.csv".format(data_dir))
 variable_info_table = pd.read_csv("{}/variable_info.csv".format(data_dir))
 for data_file in data_files:
