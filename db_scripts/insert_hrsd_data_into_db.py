@@ -18,6 +18,16 @@ def qc_shallow_well_data(df):
     return df
 
 
+def qc_wind(df):
+    df = df[df.loc[:, ' data flag']<129]
+    try:
+        df['Timestamp'] = pd.to_datetime(df.loc[:, 'Timestamp'], format="%m/%d/%Y %H:%M:%S")
+    except ValueError:
+        df['Timestamp'] = pd.to_datetime(df.loc[:, 'Timestamp'])
+    del df[' data flag']
+    return df.iloc[:, [0, 1]]
+
+
 def get_file_list(site_nums):
     data_files = []
     for site_num in site_nums:
@@ -27,22 +37,29 @@ def get_file_list(site_nums):
                     data_files.append(filename)
     return data_files
 
-data_files = get_file_list(['003'])
+data_files = get_file_list(['035'])
 site_info_table = pd.read_csv("{}/site_info.csv".format(data_dir))
 variable_info_table = pd.read_csv("{}/variable_info.csv".format(data_dir))
-for data_file in data_files:
-    df = pd.read_csv("{}/raw/{}".format(data_dir, data_file))
+for data_file in data_files[:-1]:
+    df = pd.read_csv("{}/{}".format(data_dir, data_file))
 
     site_code = data_file.split('_')[0]
     site_info = site_info_table[site_info_table.SiteCode == site_code].to_dict('records')[0]
     site_id = get_id('Site', site_info)
+    var_column = df.columns.str.strip()[1]
 
-    if df.columns[1].startswith('Rain'):
+    if var_column.startswith('Rain'):
         variable_code = 'Rainfall'
-    elif df.columns[1].startswith('Shallow Well') or df.columns[1].startswith('Level_NAVD88_ft'):
+    elif var_column.startswith('Shallow Well') or var_column.startswith('Level_NAVD88_ft'):
         variable_code = 'Shallow_well_depth'
         # for shallow well data run hampel filter, cutoff at 7.5 ft and resample at hourly time step
         df = qc_shallow_well_data(df)
+    elif var_column.startswith('Wind Direction'):
+        variable_code = 'Wind_dir'
+        df = qc_wind(df)
+    elif var_column.startswith('Wind Speed'):
+        variable_code = 'Wind_vel'
+        df = qc_wind(df)
     else:
         raise ValueError('I do not now what variable you are trying to insert')
     

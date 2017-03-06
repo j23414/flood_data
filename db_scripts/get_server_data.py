@@ -163,6 +163,10 @@ def get_table_for_variable(variable_id, site_id=None):
         variable_id = 5
     elif variable_id == 'groundwater':
         variable_id = 6
+    elif variable_id == 'wind_vel':
+        variable_id = 7
+    elif variable_id == 'wind_dir':
+        variable_id = 8
 
     table_name = 'datavalues'
     sql = """SELECT * FROM {} WHERE VariableID={};""".format(table_name, variable_id)
