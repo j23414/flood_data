@@ -120,27 +120,30 @@ def append_non_duplicates(table, df, check_col):
     :return: pandas df. a dataframe with the non duplicated values
     """
     global con
-    db_df = get_db_table_as_df(table)
-    if not db_df.empty:
-        if table == 'datavalues':
-            df.reset_index(inplace=True)
-            db_df.reset_index(inplace=True)
-        merged = df.merge(db_df,
-                          how='outer',
-                          on=check_col,
-                          indicator=True)
-        non_duplicated = merged[merged._merge == 'left_only']
-        filter_cols = [col for col in list(non_duplicated) if "_y" not in col and "_m" not in col]
-        non_duplicated = non_duplicated[filter_cols]
-        cols_clean = [col.replace('_x', '') for col in list(non_duplicated)]
-        non_duplicated.columns = cols_clean
-        non_duplicated = non_duplicated[df.columns]
-        non_duplicated.to_sql(table, con, if_exists='append', index=False)
-        return df
+    variable_ids = df['VariableID'].unique()
+    if len(variable_ids) > 1:
+        raise ValueError('More than one variable in table that is being appended to db')
     else:
-        index = True if table == 'datavalues' else False
-        df.to_sql(table, con, if_exists='append', index=index)
-        return df
+        db_df = get_table_for_variable(variable_ids[0])
+        if not db_df.empty:
+            if table == 'datavalues':
+                df.reset_index(inplace=True)
+                db_df.reset_index(inplace=True)
+            merged = df.merge(db_df,
+                              how='outer',
+                              on=check_col,
+                              indicator=True)
+            non_duplicated = merged[merged._merge == 'left_only']
+            filter_cols = [col for col in list(non_duplicated) if "_y" not in col and "_m" not in col]
+            non_duplicated = non_duplicated[filter_cols]
+            cols_clean = [col.replace('_x', '') for col in list(non_duplicated)]
+            non_duplicated.columns = cols_clean
+            non_duplicated = non_duplicated[df.columns]
+            non_duplicated.to_sql(table, con, if_exists='append', index=False)
+            return df
+        else:
+            df.to_sql(table, con, if_exists='append', index=False)
+            return df
 
 
 def get_db_table_as_df(name, sql="""SELECT * FROM {};"""):
