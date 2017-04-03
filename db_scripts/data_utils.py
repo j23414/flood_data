@@ -48,13 +48,10 @@ def account_for_elev(df, elev_threshold=10, col='Value'):
 
 
 def hampel_filter(df, col, k, threshold=2):
-    df['rolling_median'] = df[col].rolling(k).median()
-    df['rolling_std'] = df[col].rolling(k).std()
-    df['num_sigma'] = abs(df[col]-df['rolling_median'])/df['rolling_std']
-    df[col] = np.where(df['num_sigma'] > threshold, df['rolling_median'], df[col])
-    del df['rolling_median']
-    del df['rolling_std']
-    del df['num_sigma']
+    rolling_median = df[col].rolling(k).median()
+    rolling_std = df[col].rolling(k).std()
+    num_sigma = abs(df[col]-rolling_median)/rolling_std
+    df[col] = np.where(num_sigma > threshold, rolling_median, df[col])
     return df
 
 
