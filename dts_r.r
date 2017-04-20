@@ -28,42 +28,64 @@ df = df[!is.na(df$gw_daily_avg),] # remove null gw values
 short_names = c('rd', 'rhr', 'rhmxtime', 'r15', 'r15mxtime', 'r3d', 'gw', 'td', 'tr15mx', 'trhrmx', 'wdd', 'wvd',  'wvh', 'nfld', 'fld', 'evnme', 'evdte')
 colnames(df) = short_names
 
-in_col_names = c('rd', 'rhr', 'r15', 'r3d', 'gw', 'td', 'tr15mx', 'trhrmx', 'wvd')
+in_col_names = c('rd', 'rhr', 'r15', 'r3d', 'gw', 'td', 'wvd', 'tr15mx', 'trhrmx')
 out_col_name = 'fld'
 data = df[, c(in_col_names, out_col_name)]
-#data$fld = df$fld>0
-
-fmla = as.formula(paste(out_col_name, "~", paste(in_col_names, collapse="+")))
-
-fit = rpart(fmla, method='class', data=data, minsplit=7)
-
-tiff(paste(fig_dir, "Plot2.tif"), width=9, height=6, units='in', res = 300)
-rpart.plot(fit, under=TRUE, cex=0.9, extra=1, varlen = 6)
-dev.off()
-rpart.plot(fit, under=TRUE, cex=0.9, extra=1, varlen = 6)
+data$fld = df$fld>0
 
 # pca
-data = data.frame(scale(data))
-pca = prcomp(data)
+pca_data = data.frame(scale(data))
+pca = prcomp(pca_data)
+pca$x = -pca$x
+pca$rotation=-pca$rotation
 p = ggplot(pca$x[,c(1,2)], aes(x=PC1, y=PC2, colour=data[, out_col_name], label=rownames(pca$x)))
 p + geom_point() +geom_text()
 point = "2"
 neighs = get_nn(pca$x, point, 5)
 data[neighs,]
 
-# creating predictive model
 data$fld = factor(data$fld)
 prt = createDataPartition(data$fld, p=0.7)
 train_ind = prt$Resample1
-forest = randomForest(fmla, data = data, importance = TRUE, type="classification")
+
+# decision tree
+fmla = as.formula(paste(out_col_name, "~", paste(in_col_names, collapse="+")))
+
+fit = rpart(fmla, method='class', data=data[train_ind, ], minsplit=7)
+printcp(fit)
+
+tiff(paste(fig_dir, "Plot2.tif"), width=9, height=6, units='in', res = 300)
+rpart.plot(fit, under=TRUE, cex=0.9, extra=1, varlen = 6)
+dev.off()
+rpart.plot(fit, under=TRUE, cex=0.9, extra=1, varlen = 6)
+
+pfit<- prune(fit, cp=fit$cptable[which.min(fit$cptable[,"xerror"]),"CP"])
+rpart.plot(pfit, under=TRUE, cex=0.9, extra=1, varlen = 6)
+
+pred = predict(pfit, data[train_ind, in_col_names], type = 'class')
+true_fld = data[train_ind, 'fld']
+print('DT train')
+table(data[train_ind, out_col_name], pred)
+
+pred = predict(pfit, data[-train_ind, in_col_names], type = 'class')
+true_fld = data[train_ind, 'fld']
+print('DT test')
+table(data[-train_ind, out_col_name], pred)
+
+# creating predictive model
+forest = randomForest(fmla, data = data[train_ind, ], importance = TRUE, type="classification")
 
 # check on training data
 pred = predict(forest, data[train_ind, in_col_names])
 true_fld = data[train_ind, 'fld']
+print('RF train')
 print(sum(pred == true_fld)/length(true_fld))
+table(data[train_ind, out_col_name], pred)
 
 # check on testing data
 pred = predict(forest, data[-train_ind, in_col_names])
 true_fld = data[-train_ind, 'fld']
-print(sum(pred == true_fld)/length(true_fld))
+print('RF test')
+table(data[-train_ind, out_col_name], pred)
+forest$importance
 
