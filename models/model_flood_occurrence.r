@@ -38,36 +38,53 @@ colnames(df) = short_names
 
 in_col_names = c('rd', 'rhr', 'r15', 'r3d', 'gw', 'td', 'wvd', 'tr15mx', 'trhrmx')
 out_col_name = 'fld'
-data = df[, c(in_col_names, out_col_name)]
-data$fld = df$fld>0
+model_data = df[, c(in_col_names, out_col_name)]
+model_data$fld = df$fld>0
+model_data$fld = factor(model_data$fld)
 
-pca_data = data.frame(scale(data))
-pca = prcomp(pca_data)
-pca$x = -pca$x
-pca$rotation=-pca$rotation
-p = ggplot(pca$x[,c(1,2)], aes(x=PC1, y=PC2, colour=data[, out_col_name], label=rownames(pca$x)))
-p + geom_point() +geom_text()
-point = "19"
-neighs = get_nn(pca$x, point, k=11)
-data[neighs,]
-
-data$fld = factor(data$fld)
-prt = createDataPartition(data$fld, p=0.7)
+prt = createDataPartition(model_data$fld, p=0.7)
 train_ind = prt$Resample1
 
-kfit = knn(pca$x[train_ind, ], pca$x[-train_ind, ], data[train_ind, 'fld'], k=5)
-table(data[-train_ind, 'fld'], kfit)
+train_in_data = model_data[train_ind, in_col_names]
+test_in_data = model_data[-train_ind, in_col_names]
 
-svm_fit = svm(x=pca$x[train_ind,], y=data[train_ind, 'fld'])
-svm_pred = predict(svm_fit, pca$x[-train_ind,])
-table(data[-train_ind, out_col_name], svm_pred)
+train_col_stds = apply(train_in_data, 2, sd)
+train_col_means = colMeans(train_in_data)
 
-data = cbind(pca$x, data['fld'])
-in_col_names = colnames(pca$x)
-fmla = as.formula(paste(out_col_name, "~", paste(in_col_names, collapse="+")))
+train_normalized = t((t(train_in_data)-train_col_means)/train_col_stds)
+test_normalized = t((t(test_in_data)-train_col_means)/train_col_stds)
+
+pca = prcomp(train_normalized)
+pca$x = -pca$x
+pca$rotation=-pca$rotation
+p = ggplot(pca$x[,c(1,2)], aes(x=PC1, y=PC2, colour=model_data[train_ind, out_col_name], label=rownames(pca$x)))
+p + geom_point() + geom_text()
+plot(pca)
+print(pca)
+
+trn_preprocessed = predict(pca, train_normalized)
+tst_preprocessed = predict(pca, test_normalized)
+trn_in = trn_preprocessed
+tst_in = tst_preprocessed
+
+tst_out = model_data[-train_ind, 'fld']
+trn_out = model_data[train_ind, 'fld']
+train_data = cbind(as.data.frame(trn_in), fld = model_data[train_ind, 'fld'])
+fmla = as.formula(paste(out_col_name, "~", paste(colnames(trn_in), collapse="+")))
 fmla
 
-fit = rpart(fmla, method='class', data=data[train_ind, ], minsplit=2)
+kfit = knn(trn_in, tst_in, trn_out, k=5)
+table(tst_out, kfit)
+
+svm_fit = svm(fmla, data=train_data)
+svm_pred = predict(svm_fit, tst_in)
+table(tst_out, svm_pred)
+
+dt_fmla = as.formula(paste(out_col_name, "~", paste(in_col_names, collapse="+")))
+dt_train_data = model_data[train_ind, ]
+dt_test_data = model_data[-train_ind, in_col_names]
+
+fit = rpart(dt_fmla, method='class', data=dt_train_data, minsplit=2)
 printcp(fit)
 
 tiff(paste(fig_dir, "Plot2.tif"), width=9, height=6, units='in', res = 300)
@@ -78,29 +95,25 @@ rpart.plot(fit, under=TRUE, cex=0.9, extra=1, varlen = 6)
 pfit<- prune(fit, cp=fit$cptable[which.min(fit$cptable[,"xerror"]),"CP"])
 rpart.plot(pfit, under=TRUE, cex=0.9, extra=1, varlen = 6)
 
-pred = predict(pfit, data[train_ind, in_col_names], type = 'class')
-true_fld = data[train_ind, 'fld']
-table(data[train_ind, out_col_name], pred)
+pred = predict(pfit, dt_train_data[, in_col_names], type = 'class')
+table(trn_out, pred)
 
-pred = predict(pfit, data[-train_ind, in_col_names], type = 'class')
-true_fld = data[train_ind, 'fld']
-print('DT test')
-table(data[-train_ind, out_col_name], pred)
+pred = predict(pfit, dt_test_data, type = 'class')
+table(tst_out, pred)
 
-forest = randomForest(fmla, data = data[train_ind, ], importance = TRUE, type="classification", nodesize=2)
+forest = randomForest(fmla, data = train_data, importance = TRUE, type="classification", nodesize=2)
 
-pred = predict(forest, data[train_ind, in_col_names])
-true_fld = data[train_ind, 'fld']
-print('RF train')
-print(sum(pred == true_fld)/length(true_fld))
-table(data[train_ind, out_col_name], pred)
+pred = predict(forest, trn_in)
+table(trn_out, pred)
 
-pred = predict(forest, data[-train_ind, in_col_names])
-true_fld = data[-train_ind, 'fld']
-print('RF test')
-table(data[-train_ind, out_col_name], pred)
+pred = predict(forest, tst_in)
+table(tst_out, pred)
 forest$importance
 
+lo_fit = glm(fmla, family=binomial(link='logit'), data=train_data)
+print(lo_fit)
 
+pred = predict(lo_fit, as.data.frame(tst_in), type="response")
+table(tst_out, round(pred)>0)
 
 
