@@ -1,12 +1,6 @@
 import numpy as np
 import pandas as pd
 
-from flood_data.db_scripts.focus_intersection import int_flood_dates
-
-
-def filter_df_by_dates(df, dates=int_flood_dates):
-    return df.loc[pd.to_datetime(dates)]
-
 
 def percentile(df):
     df['val_percentile'] = (df.Value.rank()/max(df.Value.rank()))*100
