@@ -146,13 +146,11 @@ def append_non_duplicates(table, df, check_col):
             return df
 
 
-def get_db_table_as_df(name, sql="""SELECT * FROM {};"""):
+def get_db_table_as_df(name, sql="""SELECT * FROM {};""", date_col=None):
     global con
     sql = sql.format(name)
     if name == 'datavalues':
         date_col = 'Datetime'
-    else:
-        date_col = None
     df = pd.read_sql(sql, con, parse_dates=date_col)
     if name == 'datavalues':
         df = make_date_index(df, 'Datetime')
