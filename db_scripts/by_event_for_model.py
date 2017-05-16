@@ -28,14 +28,13 @@ len(flood_locations['location'].unique())
 
 # In[3]:
 
-subset_locations = flood_locations[flood_locations['is_downtown'] ==1]['location']
+subset_locations = flood_locations['location']
 flood_events = get_db_table_as_df('flood_events')
 flood_events['event_date'] = pd.to_datetime(flood_events['event_date'])
+flood_events['event_name'] = flood_events['event_name'].str.strip()
 flood_events['dates'] = pd.to_datetime(flood_events['dates'])
 subset_floods = flood_events[flood_events['location'].isin(subset_locations)]
 
-
-# There were two event names for one event date (2016-07-30). I will change the event_name of the 'unnamed' to 'Thunderstorm' in the db.
 
 # In[4]:
 
@@ -85,7 +84,7 @@ fl_724[fl_724['location'].duplicated(keep=False)]
 # In[10]:
 
 event_df.sort_index(inplace=True)
-event_df.loc[idx[:, 'Irene '], :]
+event_df.loc[idx[:, 'Irene'], :]
 
 
 # In[11]:
@@ -138,6 +137,8 @@ event_df.loc[idx['2016-07-30', :], :]
 
 i = event_df.loc[['2016-07-30', 'unnamed'],:].index
 event_df.drop(i, inplace=True)
+i = event_df.loc[idx['2014-09-13', "NAPSG"],:].index
+event_df.drop(i, inplace=True)
 
 
 # In[18]:
@@ -151,13 +152,15 @@ event_df
 
 days_away = []
 max_days = []
-
 for d in event_df.index:
-    ar = event_df.loc[d, 'dates'] - np.datetime64(d)
-    ar = ar.astype('timedelta64[D]')
-    days = ar / np.timedelta64(1, 'D')
-    days_away.append(days)
-    max_days.append(days.max())
+    try:
+        ar = event_df.loc[d, 'dates'] - np.datetime64(d)
+        ar = ar.astype('timedelta64[D]')
+        days = ar / np.timedelta64(1, 'D')
+        days_away.append(days)
+        max_days.append(days.max())
+    except ValueError:
+        print d
 event_df['days_away_from_event'] = days_away
 event_df['max_days_away'] = max_days
 print event_df.shape
@@ -168,9 +171,8 @@ event_df.head()
 
 # In[20]:
 
-event_filt = event_df[event_df['max_days_away']<10]
-event_df = event_filt
-print event_filt.shape
+event_df = event_df[event_df['max_days_away']<10]
+print event_df.shape
 event_df
 
 
@@ -293,6 +295,8 @@ feature_df.head()
 feature_df.to_sql(con=con, name="dntwn_nor_daily_observations", if_exists="replace")
 
 
+# ### Combine env. data with event data
+
 # In[31]:
 
 def add_event_data(evnt_data, evnt_df, col_name, func, idx):
@@ -351,10 +355,15 @@ for ind in event_df.index:
 event_df.head()
 
 
+# In[33]:
+
+event_df.to_csv('{}event_data.csv'.format(data_dir))
+
+
 # ### Combining with the non-flooding event data
 # First we have to combine all the dates in the "dates" column of the event_df into one array so we can filter those out of the overall dataset.
 
-# In[33]:
+# In[34]:
 
 flooded_dates = [np.datetime64(i) for i in event_df.index]
 flooded_dates = np.array(flooded_dates)
@@ -362,7 +371,7 @@ fl_event_dates = np.concatenate(event_df['dates'].tolist())
 all_fl_dates = np.concatenate([fl_event_dates, flooded_dates])
 
 
-# In[34]:
+# In[35]:
 
 non_flooded_records = feature_df[feature_df.index.isin(all_fl_dates) != True]
 non_flooded_records['num_flooded'] = 0
@@ -375,7 +384,7 @@ non_flooded_records.head()
 
 # Combine with flooded events
 
-# In[35]:
+# In[36]:
 
 event_df.reset_index(inplace=True)
 flooded_records = event_df
@@ -384,14 +393,14 @@ flooded_records['flooded'] = True
 flooded_records.head()
 
 
-# In[36]:
+# In[37]:
 
 reformat = pd.concat([flooded_records, non_flooded_records], join='inner')
 reformat.reset_index(inplace=True, drop=True)
 reformat.head()
 
 
-# In[37]:
+# In[38]:
 
 reformat.to_csv("{}reformat_by_event.csv".format(data_dir), index=False)
 reformat['rain_hourly_max_time'] = reformat['rain_hourly_max_time'].astype('str')  # sqlite does not support native date format
