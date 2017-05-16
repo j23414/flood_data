@@ -5,7 +5,7 @@ from get_server_data import get_server_data, get_id, append_non_duplicates, make
 def get_tide_data_from_server(yr, station_num, var_type, units):
     print("fetching data for station:{}      for year: {}".format(station_num, yr))
     url = "http://tidesandcurrents.noaa.gov/api/datagetter?begin_date={0}0101&" \
-          "end_date={0}1231&station={1}&product={2}&datum=NAVD&units={3}&" \
+          "end_date={0}1231&station={1}&product={2}&datum=MSL&units={3}&" \
           "time_zone=lst&application=web_services&format=xml".format(
         yr, station_num, var_type, units
     )
@@ -73,7 +73,7 @@ def update_tide_data(yrs, station_num, var_type, units):
         parse_tide_data(soup, data_tag, value_tag, site_id, var_id)
 
 
-start_year = 2016
+start_year = 2010
 end_year = 2017
 years = range(start_year, end_year)
 station = '8638610'

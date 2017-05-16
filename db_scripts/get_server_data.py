@@ -27,19 +27,16 @@ def get_id(typ, data):
     :param data: Dict. the site or variable data
     :return: int. id of site or variable
     """
-    global con
+    con = sqlite3.connect(db_filename)
     data_df = pd.DataFrame(data, index=[0])
     code_name = '{}Code'.format(typ)
     table_name = '{}s'.format(typ.lower())
     id_name = '{}ID'.format(typ)
     code = data[code_name]
-    check_by = [code_name] if typ == 'Site' else [code_name, 'VariableType']
+    check_by = [code_name]
     append_non_duplicates(table_name, data_df, check_by)
     table = get_db_table_as_df(table_name)
-    if typ == 'Variable':
-        id_row = table[(table[code_name] == code) & (table['VariableType'] == data['VariableType'])]
-    else:
-        id_row = table[table[code_name] == code]
+    id_row = table[table[code_name] == code]
     id_num = id_row[id_name].values[0]
     return id_num
 
@@ -52,7 +49,7 @@ def parse_wml2_data(wml2url, src_org):
     :param src_org: String. the organization e.g. "USGS"
     :return: dataframe of the time series
     """
-    global con
+    con = sqlite3.connect(db_filename)
     soup = get_server_data(wml2url)
     res_list = []
     site_data = get_site_data(soup, src_org)
@@ -119,35 +116,31 @@ def append_non_duplicates(table, df, check_col):
     'VariableCode' and 'VariableType' if checking a variable
     :return: pandas df. a dataframe with the non duplicated values
     """
-    global con
-    variable_ids = df['VariableID'].unique()
-    if len(variable_ids) > 1:
-        raise ValueError('More than one variable in table that is being appended to db')
+    con = sqlite3.connect(db_filename)
+    db_df = get_db_table_as_df(table)
+    if not db_df.empty:
+        if table == 'datavalues':
+            df.reset_index(inplace=True)
+            db_df.reset_index(inplace=True)
+        merged = df.merge(db_df,
+                          how='outer',
+                          on=check_col,
+                          indicator=True)
+        non_duplicated = merged[merged._merge == 'left_only']
+        filter_cols = [col for col in list(non_duplicated) if "_y" not in col and "_m" not in col]
+        non_duplicated = non_duplicated[filter_cols]
+        cols_clean = [col.replace('_x', '') for col in list(non_duplicated)]
+        non_duplicated.columns = cols_clean
+        non_duplicated = non_duplicated[df.columns]
+        non_duplicated.to_sql(table, con, if_exists='append', index=False)
+        return df
     else:
-        db_df = get_table_for_variable(variable_ids[0])
-        if not db_df.empty:
-            if table == 'datavalues':
-                df.reset_index(inplace=True)
-                db_df.reset_index(inplace=True)
-            merged = df.merge(db_df,
-                              how='outer',
-                              on=check_col,
-                              indicator=True)
-            non_duplicated = merged[merged._merge == 'left_only']
-            filter_cols = [col for col in list(non_duplicated) if "_y" not in col and "_m" not in col]
-            non_duplicated = non_duplicated[filter_cols]
-            cols_clean = [col.replace('_x', '') for col in list(non_duplicated)]
-            non_duplicated.columns = cols_clean
-            non_duplicated = non_duplicated[df.columns]
-            non_duplicated.to_sql(table, con, if_exists='append', index=False)
-            return df
-        else:
-            df.to_sql(table, con, if_exists='append', index=False)
-            return df
+        df.to_sql(table, con, if_exists='append', index=False)
+        return df
 
 
 def get_db_table_as_df(name, sql="""SELECT * FROM {};""", date_col=None):
-    global con
+    con = sqlite3.connect(db_filename)
     sql = sql.format(name)
     if name == 'datavalues':
         date_col = 'Datetime'
