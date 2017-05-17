@@ -1,9 +1,13 @@
 import arcpy
+from arcgisscripting import ExecuteError
 import json
 import shapefile
 import pandas as pd
+import sqlite3
+from flood_data.db_scripts.get_server_data import get_db_table_as_df, db_filename
 from arcpy import env
-from arcpy.sa import Raster, Ln, Tan, RemapValue, Reclassify, PathDistance
+from arcpy.sa import Raster, Ln, Tan, RemapValue, Reclassify, PathDistance, PathAllocation, \
+    ExtractMultiValuesToPoints, FocalStatistics, NbrRectangle
 import math
 gis_data_dir = "C:/Users/Jeff/Google Drive/research/Sadler_3rdPaper_GIS_data/"
 
@@ -21,18 +25,61 @@ def calculate_twi():
     twi.save(out_file_name)
 
 
-def reclassify_lulc_for_water():
+def reclassify_lulc(reclass_numbers, out_file_name):
     lulc_rast = Raster('nor_lulc_ext_prj.tif')
-    remap = RemapValue([["11", 1],
-                        ["91", 1]
-                        ])
+    remap_list = [[str(i), 1] for i in reclass_numbers]
+    remap = RemapValue(remap_list)
     reclass_field = "VALUE"
     water_rast = Reclassify(lulc_rast, reclass_field, remap, "NODATA")
-    out_file_name = 'nor_ow_wl.tif'
     water_rast.save(out_file_name)
 
 
-def calculate_dist_to_water(src_raster):
+def reclassify_lulc_for_water():
+    out_file_name = 'nor_ow_wl.tif'
+    reclassify_lulc([11, 91], out_file_name)
+    return out_file_name
+
+
+def reclassify_lulc_for_imperv():
+    out_file_name = 'nor_imperv.tif'
+    reclassify_lulc([21, 22, 31], out_file_name)
+    return out_file_name
+
+
+def imperviousness_raster():
+    out_file_name = 'neigh_imp.tif'
+    imp_rast = Raster('nor_imperv.tif')
+    neighborhood = NbrRectangle(width=1500, height=1500, units="MAP")
+    neigh_imp = FocalStatistics(imp_rast, neighborhood=neighborhood, statistics_type="SUM",
+                                ignore_nodata="DATA")
+    neigh_imp.save(out_file_name)
+    return out_file_name
+
+
+def path_allocation_basins():
+    src_raster = '{}/Stormwater Infrastructure/sw_struct_basins.shp'.format(gis_data_dir)
+    elev_raster = Raster('C:/Users/Jeff/Google Drive/research/Hampton Roads Data/Geographic Data/'
+                         'Raster/USGS Nor DEM/mosaic/nor_mosaic.tif')
+    out_file_name = 'path_allo_basins.tif'
+    pth_all = PathAllocation(src_raster, source_field="FID", in_surface_raster=elev_raster,
+                             in_vertical_raster=elev_raster)
+    pth_all.save(out_file_name)
+    return out_file_name
+
+
+def path_dist_water():
+    src_raster = "nor_ow_wl.tif"
+    out_file_name = "pth_dist_to_wat.tif"
+    calculate_dist_to_src(src_raster, out_file_name)
+
+
+def path_dist_basins():
+    src_raster = '{}/Stormwater Infrastructure/sw_struct_basins.shp'.format(gis_data_dir)
+    out_file_name = 'path_dist_basins.tif'
+    calculate_dist_to_src(src_raster, out_file_name)
+
+
+def calculate_dist_to_src(src_raster, out_file_name):
     """
     uses water raster as source should have run reclassify_lulc_for_water first
     :return: 
@@ -41,7 +88,6 @@ def calculate_dist_to_water(src_raster):
                          'Raster/USGS Nor DEM/mosaic/nor_mosaic.tif')
     path_dist = PathDistance(in_source_data=src_raster, in_surface_raster=elev_raster,
                              in_vertical_raster=elev_raster)
-    out_file_name = 'pth_dist_to_wat.tif'
     path_dist.save(out_file_name)
 
 
@@ -122,8 +168,77 @@ def filter_sw_struc_codes(term='basin'):
     return basin_codes
 
 
+def extract_values_to_points():
+    target_shapefile = 'fld_nfld_pts.shp'
+    elev_raster = Raster('C:/Users/Jeff/Google Drive/research/Hampton Roads Data/Geographic Data/'
+                         'Raster/USGS Nor DEM/mosaic/nor_mosaic.tif')
+    raster_list = [['twi.tif', 'twi'],
+                   [elev_raster, 'elev'],
+                   ['path_dist_basins.tif', 'dist_to_basin'],
+                   ['path_allo_basins.tif', 'basin_id'],
+                   ['neigh_imp.tif', 'imp'],
+                   ['pth_dist_to_wat.tif', 'dist_to_wat']]
+    ExtractMultiValuesToPoints(target_shapefile, raster_list, "NONE")
+
+
+def add_is_downtown_field():
+    fld_pts_shp = 'fld_nfld_pts.shp'
+    fld_pts_lyr = 'fld_pts_lyr'
+    arcpy.MakeFeatureLayer_management(fld_pts_shp, fld_pts_lyr)
+    dntn_ply = 'subset_polygon.shp'
+    dntn_field = 'is_dntn'
+    try:
+        arcpy.AddField_management(fld_pts_lyr, dntn_field, "SHORT")
+    except ExecuteError:
+        arcpy.DeleteField_management(fld_pts_lyr, dntn_field)
+        arcpy.AddField_management(fld_pts_lyr, dntn_field, "SHORT")
+    arcpy.SelectLayerByLocation_management(fld_pts_lyr, overlap_type='WITHIN',
+                                           select_features=dntn_ply)
+    arcpy.CalculateField_management(fld_pts_lyr, dntn_field, "1")
+
+
+def add_flood_pt_field():
+    fld_pts_shp = 'fld_nfld_pts.shp'
+    fld_pts_lyr = 'fld_pts_lyr'
+    arcpy.MakeFeatureLayer_management(fld_pts_shp, fld_pts_lyr)
+    field = 'flood_pt'
+    try:
+        arcpy.AddField_management(fld_pts_lyr, field, "SHORT")
+    except ExecuteError:
+        arcpy.DeleteField_management(fld_pts_lyr, field)
+        arcpy.AddField_management(fld_pts_lyr, field, "SHORT")
+    expresssion = '!count!>0'
+    arcpy.CalculateField_management(fld_pts_lyr, field, expression=expresssion,
+                                    expression_type='PYTHON')
+
+
+def join_fld_pts_with_basin_attr():
+    fld_pts_shp = 'fld_nfld_pts.shp'
+    sw_table = '{}/Stormwater Infrastructure/sw_struct_basins.shp'.format(gis_data_dir)
+    arcpy.JoinField_management(fld_pts_shp, in_field='basin_id', join_table=sw_table,
+                               join_field='FID')
+
+
+def update_db():
+    fld_loc = read_shapefile_attribute_table('{}fld_nfld_pts.shp'.format(gis_data_dir))
+    needed_attrs = ['location',
+                    'xcoord',
+                    'ycoord',
+                    'twi',
+                    'elev',
+                    'dist_to_ba',
+                    'basin_id',
+                    'imp',
+                    'dist_to_wa',
+                    'is_dntn'
+                    ]
+    filt = fld_loc[needed_attrs]
+    con = sqlite3.connect(db_filename)
+    filt.to_sql(con, name='flood_locations', if_exists='replace')
+
+
 def main():
-    make_basin_shapefile()
+    add_flood_pt_field()
 
 if __name__ == "__main__":
     main()
