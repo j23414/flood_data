@@ -224,21 +224,33 @@ def update_db():
     needed_attrs = ['location',
                     'xcoord',
                     'ycoord',
+                    'count',
                     'twi',
-                    'elev',
+                    'elev_1',
                     'dist_to_ba',
-                    'basin_id',
                     'imp',
                     'dist_to_wa',
-                    'is_dntn'
+                    'is_dntn',
+                    'Structure1',
+                    'Rim_Elevat',
+                    'Invert_Ele',
+                    'Year_Insta',
+                    'Pipe_Geome',
+                    'Horizontal',
+                    'Vertical_D',
+                    'Pipe_Lengt',
+                    'Pipe_Mater',
+                    'Year_Ins_1',
+                    'Condition'
                     ]
     filt = fld_loc[needed_attrs]
     con = sqlite3.connect(db_filename)
-    filt.to_sql(con, name='flood_locations', if_exists='replace')
+    filt.to_sql(con=con, name='flood_locations', if_exists='replace')
 
 
 def main():
-    add_flood_pt_field()
+    update_db()
+    
 
 if __name__ == "__main__":
     main()
