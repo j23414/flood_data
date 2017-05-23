@@ -59,7 +59,7 @@ event_df.columns = ['dates', 'num_flooded', 'num_dates', 'num_locations']
 
 # In[7]:
 
-event_df.head()
+event_df.tail()
 
 
 # ### Where num_flooded does not equal num_locations _investigation_
@@ -171,7 +171,7 @@ event_df.head()
 
 # In[20]:
 
-event_df = event_df[event_df['max_days_away']<10]
+# event_df = event_df[event_df['max_days_away']<10]
 print event_df.shape
 event_df
 
@@ -207,9 +207,15 @@ r15_mx = rain_df.resample('D').max()
 feature_df['rain_15_min_max'] = r15_mx['Value']
 feature_df['rain_15_min_max_time'] = rain_df.groupby(pd.Grouper(freq='D')).idxmax()['Value']
 
-rain_prev_3_days = rain_grouped.resample('D').sum().rolling(window=3).sum()
-rain_prev_3_days.reset_index(level=0, drop=True, inplace=True)
+rain_prev_3_days = rain_daily.shift(1).rolling(window=3).sum()
 feature_df['rain_prev_3_days'] = rain_prev_3_days.resample('D').mean()['Value']
+
+
+# In[49]:
+
+piv = rain_daily.pivot(columns='SiteID', values='Value')
+inx = piv.std(axis=1).sort_values(ascending=False).index
+piv.loc[inx]
 
 
 # #### Groundwater
@@ -355,15 +361,20 @@ for ind in event_df.index:
 event_df.head()
 
 
-# In[33]:
+# In[34]:
 
 event_df.to_csv('{}event_data.csv'.format(data_dir))
+
+
+# In[35]:
+
+event_df.iloc[[21,22],3:]
 
 
 # ### Combining with the non-flooding event data
 # First we have to combine all the dates in the "dates" column of the event_df into one array so we can filter those out of the overall dataset.
 
-# In[34]:
+# In[36]:
 
 flooded_dates = [np.datetime64(i) for i in event_df.index]
 flooded_dates = np.array(flooded_dates)
@@ -371,7 +382,7 @@ fl_event_dates = np.concatenate(event_df['dates'].tolist())
 all_fl_dates = np.concatenate([fl_event_dates, flooded_dates])
 
 
-# In[35]:
+# In[37]:
 
 non_flooded_records = feature_df[feature_df.index.isin(all_fl_dates) != True]
 non_flooded_records['num_flooded'] = 0
@@ -384,7 +395,7 @@ non_flooded_records.head()
 
 # Combine with flooded events
 
-# In[36]:
+# In[38]:
 
 event_df.reset_index(inplace=True)
 flooded_records = event_df
@@ -393,17 +404,21 @@ flooded_records['flooded'] = True
 flooded_records.head()
 
 
-# In[37]:
+# In[39]:
 
 reformat = pd.concat([flooded_records, non_flooded_records], join='inner')
 reformat.reset_index(inplace=True, drop=True)
 reformat.head()
 
 
-# In[38]:
+# In[40]:
 
-reformat.to_csv("{}reformat_by_event.csv".format(data_dir), index=False)
 reformat['rain_hourly_max_time'] = reformat['rain_hourly_max_time'].astype('str')  # sqlite does not support native date format
 reformat['rain_15_min_max_time'] = reformat['rain_15_min_max_time'].astype('str')
 reformat.to_sql(name="for_model", con=con, index=False, if_exists='replace')
+
+
+# In[ ]:
+
+
 

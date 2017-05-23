@@ -1,4 +1,5 @@
 import arcpy
+import numpy as np
 from arcgisscripting import ExecuteError
 import json
 import shapefile
@@ -241,16 +242,23 @@ def update_db():
                     'Pipe_Lengt',
                     'Pipe_Mater',
                     'Year_Ins_1',
-                    'Condition'
+                    'Condition',
+                    'flood_pt'
                     ]
     filt = fld_loc[needed_attrs]
+    filt_num = filt.apply(pd.to_numeric, errors='ignore')
+    filt_num.ix[:, filt_num.columns != 'location'] = filt_num.ix[
+                                                     :,
+                                                     filt_num.columns != 'location'].replace(
+        r'\s+', np.nan, regex=True)
+    # filt_num = filt_num.replace(r'\s+', np.nan, regex=True)
     con = sqlite3.connect(db_filename)
-    filt.to_sql(con=con, name='flood_locations', if_exists='replace')
+    filt_num.to_sql(con=con, name='flood_locations', if_exists='replace')
 
 
 def main():
     update_db()
-    
+
 
 if __name__ == "__main__":
     main()
