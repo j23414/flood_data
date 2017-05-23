@@ -96,6 +96,7 @@ def merge_flood_non_flood():
     flood_pts = 'fld_pts_rd_data.shp'
     non_flood_pts = 'sampled_road_pts.shp'
     out_file_name = 'fld_nfld_pts.shp'
+    print "Merge_management"
     arcpy.Merge_management([flood_pts, non_flood_pts], out_file_name)
 
 
@@ -103,6 +104,7 @@ def join_flooded_pts_with_rd_attributes():
     flood_pts = 'flooded_points.shp'
     road_lines = 'nor_roads_centerlines.shp'
     out_file_name = 'fld_pts_rd_data.shp'
+    print "SpatialJoin_analysis"
     arcpy.SpatialJoin_analysis(flood_pts, road_lines, out_file_name, match_option='CLOSEST')
 
 
@@ -111,6 +113,7 @@ def join_sw_structures_with_pipe_data():
     sw_str = '{}Norfolk_SW_Structures.shp'.format(data_dir)
     sw_pipe = '{}Norfolk_SW_Pipes.shp'.format(data_dir)
     out_file_name = '{}sw_structures_joined_pipes.shp'.format(data_dir)
+    print "SpatialJoin_analysis"
     arcpy.SpatialJoin_analysis(sw_str, sw_pipe, out_file_name, match_option='CLOSEST')
     return out_file_name
 
@@ -127,22 +130,31 @@ def read_shapefile_attribute_table(sf_name):
 
 def sample_road_points():
     fld_pts = '{}fld_pts_rd_data.shp'.format(gis_data_dir)
-    rd_pts = '{}road_points.shp'.format(gis_data_dir)
+    rd_pts = '{}rd_far_fld.shp'.format(gis_data_dir)
     fld_pt_df = read_shapefile_attribute_table(fld_pts)
     rd_pts_df = read_shapefile_attribute_table(rd_pts)
     cls = fld_pt_df.groupby('VDOT')['count'].sum().sort_values(ascending=False)
     cls = cls / cls.sum() * 100
     print cls
-    num_samples = (cls * 800 / 100).round()
+    num_samples = (cls * 750 / 100).round()
 
     l = []
     for c, n in num_samples.iteritems():
         d = rd_pts_df[rd_pts_df['VDOT'] == c]
-        idx = d.sample(n=int(n)).index
+        if d.shape[0] > n:
+            idx = d.sample(n=int(n)).index
+        else:
+            print "there are too few points. only {} when it's asking for {} for VDOT {}".format(
+                d.shape[0],
+                n,
+                c
+            )
+            idx = d.index
         l.append(pd.Series(idx))
     sampled = pd.concat(l)
     out_file_name = 'sampled_road_pts.shp'
     where_clause = '"FID" IN ({})'.format(",".join(map(str, sampled.tolist())))
+    print "Select_analysis"
     arcpy.Select_analysis(rd_pts, out_file_name, where_clause)
     return sampled
 
@@ -152,6 +164,7 @@ def make_basin_shapefile():
     basin_codes = filter_sw_struc_codes('basin')
     where_clause = '"Structure1" IN (\'{}\')'.format("','".join(map(str, basin_codes)))
     out_file_name = '{}/Stormwater Infrastructure/sw_struct_basins.shp'.format(gis_data_dir)
+    print "Select_analysis"
     arcpy.Select_analysis(sw_strct, out_file_name, where_clause)
     return out_file_name
 
@@ -256,9 +269,42 @@ def update_db():
     filt_num.to_sql(con=con, name='flood_locations', if_exists='replace')
 
 
-def main():
-    update_db()
+def make_rand_road_pts():
+    """
+    makes the 'rd_far_fld.shp' file which is points on roads that are spaced at least 300 ft from
+    each other and at least 200 ft from any flood points
+    :return: 
+    """
+    road_shapefile = "nor_roads_centerlines.shp"
+    arcpy.Densify_edit(road_shapefile, densification_method='DISTANCE', distance=30)
+    road_pts_file = 'rd_pts_all_1.shp'
+    arcpy.FeatureVerticesToPoints_management(road_shapefile, road_pts_file)
+    rand_rd_pts_file = 'rand_road.shp'
+    rand_rd_pts_lyr = 'rand_road_lyr'
+    arcpy.CreateRandomPoints_management(gis_data_dir, rand_rd_pts_file, road_pts_file,
+                                        number_of_points_or_field=50000,
+                                        minimum_allowed_distance=200)
+    fld_pts_file = 'flooded_points.shp'
+    fld_pts_buf = 'fld_pt_buf.shp'
+    arcpy.Buffer_analysis(fld_pts_file, fld_pts_buf, buffer_distance_or_field=200,
+                          dissolve_option='ALL')
+    arcpy.MakeFeatureLayer_management(rand_rd_pts_file, rand_rd_pts_lyr)
+    arcpy.SelectLayerByLocation_management(rand_rd_pts_lyr, overlap_type='WITHIN',
+                                           select_features=fld_pts_buf,
+                                           invert_spatial_relationship='INVERT')
+    rd_pts_outside_buf = 'rd_far_fld.shp'
+    arcpy.CopyFeatures_management(rand_rd_pts_lyr, rd_pts_outside_buf)
+    arcpy.JoinField_management(rd_pts_outside_buf, in_field='CID', join_table=road_pts_file,
+                               join_field='FID')
 
+
+def main():
+    # merge_flood_non_flood()
+    # add_flood_pt_field()
+    # add_is_downtown_field()
+    # extract_values_to_points()
+    # join_fld_pts_with_basin_attr()
+    update_db()
 
 if __name__ == "__main__":
     main()
