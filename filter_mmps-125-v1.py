@@ -5,7 +5,7 @@ df['Value'].plot()
 import matplotlib.pyplot as plt
 plt.show()
 from db_scripts.get_server_data import data_dir db_filename
-from db_scripts.get_server_data import data_dir,db_filename
+from db_scripts.get_server_data import data_dir,raw_db_filename
 from db_scripts.data_utils import hampel_filter
 df_raw = pd.read_csv('{}/hrsd_data/raw/MMPS-125.csv'.format(data_dir))
 df_raw['Value'].plot()

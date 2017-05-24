@@ -10,8 +10,9 @@ base_manuscript_dir = os.path.join(directory, '../../Manuscript/')
 data_dir = os.path.join(base_manuscript_dir, 'Data/')
 fig_dir = os.path.join(base_manuscript_dir, "Figures/general/")
 
+raw_db_filename = "C:/Users/Jeff/Google Drive/research/Hampton Roads Data/Time Series/" \
+                  "hampt_rd_data.sqlite"
 db_filename = "C:/Users/Jeff/Google Drive/research/Sadler_3rdPaper_Data/floodData.sqlite"
-
 
 def get_server_data(url):
     response = requests.get(url)
@@ -26,7 +27,7 @@ def get_id(typ, data):
     :param data: Dict. the site or variable data
     :return: int. id of site or variable
     """
-    con = sqlite3.connect(db_filename)
+    con = sqlite3.connect(raw_db_filename)
     data_df = pd.DataFrame(data, index=[0])
     code_name = '{}Code'.format(typ)
     table_name = '{}s'.format(typ.lower())
@@ -48,7 +49,7 @@ def parse_wml2_data(wml2url, src_org):
     :param src_org: String. the organization e.g. "USGS"
     :return: dataframe of the time series
     """
-    con = sqlite3.connect(db_filename)
+    con = sqlite3.connect(raw_db_filename)
     soup = get_server_data(wml2url)
     res_list = []
     site_data = get_site_data(soup, src_org)
@@ -115,7 +116,7 @@ def append_non_duplicates(table, df, check_col):
     'VariableCode' and 'VariableType' if checking a variable
     :return: pandas df. a dataframe with the non duplicated values
     """
-    con = sqlite3.connect(db_filename)
+    con = sqlite3.connect(raw_db_filename)
     db_df = get_db_table_as_df(table)
     if not db_df.empty:
         if table == 'datavalues':
@@ -139,7 +140,7 @@ def append_non_duplicates(table, df, check_col):
 
 
 def get_db_table_as_df(name, sql="""SELECT * FROM {};""", date_col=None):
-    con = sqlite3.connect(db_filename)
+    con = sqlite3.connect(raw_db_filename)
     sql = sql.format(name)
     if name == 'datavalues':
         date_col = 'Datetime'

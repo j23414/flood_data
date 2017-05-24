@@ -5,7 +5,7 @@ import json
 import shapefile
 import pandas as pd
 import sqlite3
-from flood_data.db_scripts.get_server_data import get_db_table_as_df, db_filename
+from flood_data.db_scripts.get_server_data import get_db_table_as_df, raw_db_filename
 from arcpy import env
 from arcpy.sa import Raster, Ln, Tan, RemapValue, Reclassify, PathDistance, PathAllocation, \
     ExtractMultiValuesToPoints, FocalStatistics, NbrRectangle
@@ -265,7 +265,7 @@ def update_db():
                                                      filt_num.columns != 'location'].replace(
         r'\s+', np.nan, regex=True)
     # filt_num = filt_num.replace(r'\s+', np.nan, regex=True)
-    con = sqlite3.connect(db_filename)
+    con = sqlite3.connect(raw_db_filename)
     filt_num.to_sql(con=con, name='flood_locations', if_exists='replace')
 
 

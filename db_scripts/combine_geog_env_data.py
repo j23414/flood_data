@@ -3,7 +3,7 @@
 
 # In[1]:
 
-from get_server_data import get_db_table_as_df, db_filename
+from get_server_data import get_db_table_as_df, raw_db_filename
 import sqlite3
 import pandas as pd
 import numpy as np
@@ -98,6 +98,6 @@ all_locations.tail()
 
 # In[13]:
 
-con = sqlite3.connect(db_filename)
+con = sqlite3.connect(raw_db_filename)
 all_locations.to_sql(con=con, name='for_model_geog', if_exists='replace')
 

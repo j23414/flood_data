@@ -1,5 +1,5 @@
 # coding: utf-8
-from db_scripts.get_server_data import data_dir, db_filename
+from db_scripts.get_server_data import data_dir, raw_db_filename
 import pandas as pd
 import sqlite3
 from db_scripts.data_utils import hampel_filter
