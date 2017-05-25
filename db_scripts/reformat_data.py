@@ -1,18 +1,18 @@
 import pandas as pd
 
 from flood_data.db_scripts.focus_intersection import int_flood_dates
-from flood_data.db_scripts.get_server_data import get_table_for_variable, data_dir
+from flood_data.db_scripts.get_server_data import get_table_for_variable_code, data_dir
 
 # for each variable get df
-tide_df = get_table_for_variable('tide')
+tide_df = get_table_for_variable_code('tide')
 tide_df = tide_df.resample('D').mean()
 
-rainfall_df = get_table_for_variable('rainfall', site_id=7)
+rainfall_df = get_table_for_variable_code('rainfall', site_id=7)
 rainfall_daily_totals = rainfall_df['Value'].resample('D').sum()
 rainfall_max_15 = rainfall_df['Value'].resample('D').max()
 rainfall_prev_3_days = rainfall_df['Value'].resample('D').sum().rolling(window=3).sum()
 
-gw_df = get_table_for_variable('groundwater')
+gw_df = get_table_for_variable_code('groundwater')
 gw_df = gw_df.resample('D').mean()
 
 combined_df = pd.concat([tide_df['Value'], rainfall_daily_totals, rainfall_max_15,

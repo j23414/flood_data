@@ -14,10 +14,26 @@ raw_db_filename = "C:/Users/Jeff/Google Drive/research/Hampton Roads Data/Time S
                   "hampt_rd_data.sqlite"
 db_filename = "C:/Users/Jeff/Google Drive/research/Sadler_3rdPaper_Data/floodData.sqlite"
 
+
 def get_server_data(url):
     response = requests.get(url)
     soup = bs4.BeautifulSoup(response.text, 'lxml')
     return soup
+
+
+def get_code_from_id(typ, id):
+    """
+    
+    :param typ: string 'Variable' or 'Site'
+    :param id: int
+    :return: 
+    """
+    table_name = '{}s'.format(typ.lower())
+    table = get_db_table_as_df(table_name)
+    code_name = '{}Code'.format(typ)
+    id_name = '{}ID'.format(typ)
+    return table[table[id_name]==id][code_name].values[0]
+
 
 
 def get_id(typ, data):
@@ -27,7 +43,6 @@ def get_id(typ, data):
     :param data: Dict. the site or variable data
     :return: int. id of site or variable
     """
-    con = sqlite3.connect(raw_db_filename)
     data_df = pd.DataFrame(data, index=[0])
     code_name = '{}Code'.format(typ)
     table_name = '{}s'.format(typ.lower())
@@ -150,34 +165,12 @@ def get_db_table_as_df(name, sql="""SELECT * FROM {};""", date_col=None):
     return df
 
 
-def get_table_for_variable(variable_id, site_id=None):
-    if variable_id == 'tide':
-        variable_id = 4
-    elif variable_id == 'rainfall':
-        variable_id = 5
-    elif variable_id == 'groundwater':
-        variable_id = 6
-    elif variable_id == 'wind_vel':
-        variable_id = 7
-    elif variable_id == 'wind_dir':
-        variable_id = 8
-
+def get_table_for_variable_code(variable_code, site_id=None):
+    var_id = get_id('Variable', {'VariableCode': variable_code})
     table_name = 'datavalues'
-    sql = """SELECT * FROM {} WHERE VariableID={};""".format(table_name, variable_id)
+    sql = """SELECT * FROM {} WHERE VariableID={};""".format(table_name, var_id)
     df = get_db_table_as_df(table_name, sql=sql)
     df = df.sort_index()
-    if variable_id == 6:
-        # remove all 0.85 and 1.85 values as suggested by HRSD personnel
-        df['Value'] = np.where(
-            np.logical_and(df['Value'] > 0.84, df['Value'] < 0.86),
-            np.nan,
-            df['Value']
-        )
-        df['Value'] = np.where(
-            np.logical_and(df['Value'] > 1.84, df['Value'] < 1.86),
-            np.nan,
-            df['Value']
-        )
     if site_id:
         df = df[df['SiteID'] == site_id]
     return df

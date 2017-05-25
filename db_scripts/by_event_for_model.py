@@ -10,7 +10,7 @@
 
 get_ipython().magic(u'matplotlib inline')
 from focus_intersection import subset_floods, flood_df, subset_locations
-from get_server_data import get_table_for_variable, get_db_table_as_df, data_dir, db_filename
+from get_server_data import get_table_for_variable_code, get_db_table_as_df, data_dir, db_filename
 import pandas as pd
 import numpy as np
 import sqlite3

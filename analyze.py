@@ -1,10 +1,10 @@
 from db_scripts.data_utils import resample_df, filter_df_by_dates
-from db_scripts.get_server_data import get_table_for_variable
+from db_scripts.get_server_data import get_table_for_variable_code
 from flood_data.db_scripts.focus_intersection import all_flood_dates
 
 
 def number_of_flood_dates_over_threshold(threshold=3.2, units="feet"):
-    tide_df = get_table_for_variable('tide')
+    tide_df = get_table_for_variable_code('tide')
     tide_df = resample_df(tide_df, 'max')
     tide_df = filter_df_by_dates(tide_df, all_flood_dates)
     above_thresh = tide_df[tide_df.Value > 3.2]
