@@ -42,11 +42,14 @@ def pivot_dv_df(df):
 # In[5]:
 
 def rename_cols(df, var_abbrev):
-    new_df = df.copy()
-    cols = df.columns.tolist()
-    new_cols = ['{}-{}'.format(var_abbrev, c) for c in cols]
-    new_df.columns = new_cols
-    return new_df
+    if var_abbrev != "":
+        new_df = df.copy()
+        cols = df.columns.tolist()
+        new_cols = ['{}-{}'.format(var_abbrev, c) for c in cols]
+        new_df.columns = new_cols
+        return new_df
+    else:
+        return df
 
 
 # In[6]:
@@ -106,8 +109,10 @@ rain_df = get_table_for_variable_code('rainfall')
 
 # In[11]:
 
-rain_daily15 = daily_pivot_table('rainfall', np.sum, 'rd')
-rain_daily = daily_pivot_table('daily_rainfall', np.sum, 'rd')
+rain_daily15 = daily_pivot_table('rainfall', np.sum, '')
+rain_daily = daily_pivot_table('daily_rainfall', np.sum, '')
+rain_daily_comb_no_name = pd.concat([rain_daily, rain_daily15], axis=1)
+rain_daily_comb_named = rename_cols(rain_daily_comb_no_name, 'rd')
 
 
 # ## Hourly Rainfall
@@ -117,7 +122,7 @@ rain_daily = daily_pivot_table('daily_rainfall', np.sum, 'rd')
 rain15 = pivot_dv_df(rain_df)
 rain_hourly_totals = rain15.rolling(window='H').sum()
 rhr_mx = rain_hourly_totals.resample('D').max()
-rhr_mx = rename_cols(rhr_mx, 'rhr_mx')
+rhr_mx = rename_cols(rhr_mx, 'rhrmx')
 rhr_mx.head()
 
 
@@ -150,7 +155,7 @@ r15_timemx.head()
 
 # In[16]:
 
-rain_prev_3_days = rain_daily.shift(1).rolling(window=3).sum()
+rain_prev_3_days = rain_daily_comb_no_name.shift(1).rolling(window=3).sum()
 rain_prev_3_days = rename_cols(rain_prev_3_days, 'r3d')
 rain_prev_3_days.head()
 
@@ -215,8 +220,7 @@ all_wind.head()
 
 # In[24]:
 
-feature_df = pd.concat([all_wind, hilo_df, td_r15mx, td_rhrmx, tide_df, gw_df, r15_mx, rhr_mx, rain_daily15, 
-                       rain_daily, rain_prev_3_days], axis=1)
+feature_df = pd.concat([all_wind, hilo_df, td_r15mx, td_rhrmx, tide_df, gw_df, r15_mx, rhr_mx, rain_daily_comb_named, rain_prev_3_days], axis=1)
 feature_df.head()
 
 
@@ -226,5 +230,5 @@ feature_df.head()
 # In[25]:
 
 con = sqlite3.connect(db_filename)
-feature_df.to_sql(con=con, name="dntwn_nor_daily_observations", if_exists="replace")
+feature_df.to_sql(con=con, name="nor_daily_observations", if_exists="replace")
 

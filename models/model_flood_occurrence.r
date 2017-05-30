@@ -25,6 +25,18 @@ get_nn = function(d, point, k){
   return(close_points)
 }
 
+remove_cols= function(l, cols){
+    return(l[! l %in% cols])
+}
+
+make_factors = function(model_data){
+model_data$Structure1 = as.factor(model_data$Structure1)
+model_data$Pipe_Geome = as.factor(model_data$Pipe_Geome)
+model_data$Pipe_Mater = as.factor(model_data$Pipe_Mater)
+model_data$Condition = as.factor(model_data$Condition)
+return(model_data)
+}
+
 base_dir<- "C:/Users/Jeff/Documents/research/Sadler_3rdPaper/manuscript/"
 data_dir<- "C:/Users/Jeff/Google Drive/research/Sadler_3rdPaper_Data/"
 fig_dir <- paste(base_dir, "Figures/general/", sep="")
@@ -32,84 +44,27 @@ db_filename <- "floodData.sqlite"
 
 con = dbConnect(RSQLite::SQLite(), dbname=paste(data_dir, db_filename, sep=""))
 
-df = dbReadTable(con, 'for_model_geog')
+test_df = dbReadTable(con, 'test_geog_data')
+train_df = dbReadTable(con, 'train_geog_data')
 
-df = df[df$is_dntn == 1,]
-df = subset(df, rain_daily_sum>0.1)
+colnames(test_df)
 
-colnames(df)
 
-in_col_names = c('rain_daily_sum',
-                 'rain_hourly_max',
-                 'rain_15_min_max', 
-                 'rain_prev_3_days', 
-                 'gw_daily_avg', 
-                 'tide_daily_avg', 
-                 'wind_vel_daily_avg',
-                 'tide_r15mx', 
-                 'tide_rhrmx',
-                 'imp',
-                 'twi',
-                 'dist_to_wa',
-                 'dist_to_ba',
-                 'Pipe_Geome',
-                 'Horizontal',
-                 'Invert_Ele',
-                 'Vertical_D',
-                 'Year_Insta',
-                 'Pipe_Lengt',
-                 'Rim_Elevat',
-                 'Structure1',
-                 'Year_Ins_1',
-                 'Year_Insta',
-                 'elev_1'
-                )
+cols_to_remove = c('level_0', 'index', 'is_dntn', 'flood_pt', 'event_name', 'num_flooded', 'location', 'count', 'flooded')
+in_col_names = remove_cols(colnames(test_df), cols_to_remove)
 out_col_name = 'flooded'
-model_data = df[, c(in_col_names, out_col_name)]
-model_data[,out_col_name] = model_data[,out_col_name]>0
-model_data[,out_col_name] = factor(model_data[,out_col_name])
 
-col_nums = c("twi", "dist_to_wa", "dist_to_ba", "Horizontal", "Invert_Ele", "Vertical_D", "Pipe_Lengt", "Rim_Elevat", "elev_1")
-model_data[col_nums] = sapply(model_data[col_nums], as.numeric)
-model_data$Structure1 = as.factor(model_data$Structure1)
-model_data$Pipe_Geome = as.factor(model_data$Structure1)
-model_data$Pipe_Mater = as.factor(model_data$Structure1)
-str(model_data)
+test_df = make_factors(test_df)
+train_df = make_factors(train_df)
 
-boxplot(model_data$rain_daily_sum)
-median_fld_dly_rain = quantile(model_data[model_data$flooded == TRUE, 'rain_daily_sum'], .25)
-hi_rn_rows = which(model_data$rain_daily_sum>median_fld_dly_rain)
-model_data = model_data[-hi_rn_rows,]
-boxplot(model_data$rain_daily_sum)
+train_data = train_df[, append(in_col_names, out_col_name)]
+test_data = test_df[, append(in_col_names, out_col_name)]
 
-head(model_data[order(-model_data$rain_daily_sum),])
+train_in_data = train_df[, in_col_names]
+test_in_data = test_df[, in_col_names]
 
-print(summary(model_data$flooded))
-sum(as.numeric(model_data$flooded == TRUE))/sum(as.numeric(model_data$flooded == FALSE))
-
-prt = createDataPartition(model_data[, out_col_name], p=0.7)
-train_ind = prt$Resample1
-test_ind = rownames(model_data[-train_ind,])
-print(length(test_ind) + length(train_ind))
-# length(rownames(model_data[model_data[train_ind, out_col_name]==TRUE]))
-length(test_ind)
-
-train_data = model_data[train_ind, ]
-test_data = model_data[test_ind, ]
-
-nfld_train = rownames(train_data[train_data[, out_col_name] == FALSE,])
-fld_train = rownames(train_data[train_data[, out_col_name] == TRUE,])
-nfld_test = rownames(test_data[test_data[, out_col_name] == FALSE,])
-fld_test = rownames(test_data[test_data[, out_col_name] == TRUE,])
-down_sample_percent = .006
-nfld_train_dwnsmp = sample(nfld_train, down_sample_percent*length(nfld_train))
-train_ind = c(fld_train, nfld_train_dwnsmp)
-
-train_in_data = model_data[train_ind, in_col_names]
-test_in_data = model_data[test_ind, in_col_names]
-
-tst_out = model_data[test_ind, out_col_name]
-trn_out = model_data[train_ind, out_col_name]
+tst_out = test_df[, out_col_name]
+trn_out = train_df[, out_col_name]
 
 train_col_stds = apply(train_in_data, 2, sd)
 train_col_means = colMeans(train_in_data)
@@ -142,12 +97,10 @@ svm_pred = predict(svm_fit, tst_in)
 table(tst_out, svm_pred)
 
 dt_fmla = as.formula(paste(out_col_name, "~", paste(in_col_names, collapse="+")))
-dt_train_data = model_data[train_ind, ]
-dt_test_data = model_data[test_ind, in_col_names]
 
-colnames(dt_train_data)
+colnames(train_data)
 
-fit = rpart(dt_fmla, method='class', data=dt_train_data, minsplit=2)
+fit = rpart(dt_fmla, method='class', data=train_data)
 printcp(fit)
 
 tiff(paste(fig_dir, "Plot2.tif"), width=9, height=6, units='in', res = 300)
@@ -158,11 +111,13 @@ rpart.plot(fit, under=TRUE, cex=0.9, extra=1, varlen = 6)
 pfit<- prune(fit, cp=fit$cptable[which.min(fit$cptable[,"xerror"]),"CP"])
 rpart.plot(pfit, under=TRUE, cex=0.9, extra=1, varlen = 6)
 
-pred = predict(pfit, dt_train_data[, in_col_names], type = 'class')
+pred = predict(pfit, train_data, type = 'class')
 table(trn_out, pred)
 
-pred = predict(pfit, dt_test_data, type = 'class')
+pred = predict(pfit, test_data, type = 'class')
 table(tst_out, pred)
+
+pred
 
 forest = randomForest(dt_fmla, data = dt_train_data, importance = TRUE, type="classification", nodesize=2)
 

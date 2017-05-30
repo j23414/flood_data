@@ -3,53 +3,79 @@
 
 # In[1]:
 
-from get_server_data import get_db_table_as_df, raw_db_filename
+from get_server_data import get_db_table_as_df, db_filename
 import sqlite3
 import pandas as pd
 import numpy as np
+from sklearn.model_selection import train_test_split
 
 
 # In[2]:
 
-flood_locations = get_db_table_as_df('flood_locations')
-flood_events = get_db_table_as_df('flood_events', date_col=['event_date', 'dates'])
-for_model = get_db_table_as_df('for_model', date_col=['event_date'])
-daily_obs = get_db_table_as_df('dntwn_nor_daily_observations', date_col=['Datetime'])
+def indicies_where_daily_rain_exceeds_threshold(df, threshold):
+    rd = df[[c for c in df.columns if c.startswith('rd')]]
+    ind_abv_threshold = rd[rd.max(axis=1)>0.1].index
+    return ind_abv_threshold
 
 
 # In[3]:
 
-flood_locations.head()
+flood_locations = get_db_table_as_df('flood_locations', db_file=db_filename)
+flood_events = get_db_table_as_df('flood_events', date_col=['event_date', 'dates'], db_file=db_filename)
+for_model = get_db_table_as_df('for_model', date_col=['event_date'], db_file=db_filename)
+daily_obs = get_db_table_as_df('nor_daily_observations', date_col=['Datetime'], db_file=db_filename)
 
 
 # In[4]:
 
-daily_obs.set_index('Datetime', inplace=True)
-daily_obs.head()
+flood_locations.head()
 
 
 # In[5]:
 
-daily_obs.shape
+daily_obs.set_index('Datetime', inplace=True)
 
 
 # In[6]:
 
-flood_events.head()
+print daily_obs.shape
+rain_threshold = 0.1
+rd_abv_thresh = indicies_where_daily_rain_exceeds_threshold(daily_obs, rain_threshold)
 
 
 # In[7]:
 
-for_model.set_index('event_date', inplace=True)
-for_model.head()
+daily_obs = daily_obs.loc[rd_abv_thresh,:]
+print daily_obs.shape
+daily_obs.head()
 
 
 # In[8]:
 
-flood_locations.shape
+flood_events.head()
 
 
 # In[9]:
+
+for_model.set_index('event_date', inplace=True)
+for_model.shape
+
+
+# In[10]:
+
+for_model = for_model.loc[indicies_where_daily_rain_exceeds_threshold(for_model, rain_threshold),:]
+print for_model.shape
+for_model.head()
+
+
+# In[11]:
+
+print flood_locations.shape
+flood_locations = flood_locations[flood_locations['count']>1]
+flood_locations.shape
+
+
+# In[12]:
 
 lst = []
 for index, row in flood_locations.iterrows():
@@ -76,28 +102,46 @@ for index, row in flood_locations.iterrows():
         
 
 
-# In[10]:
+# In[13]:
 
 all_locations = pd.concat(lst)
 all_locations.reset_index(inplace=True)
 
 
-# In[11]:
+# In[14]:
 
 all_locations.shape
+all_locations.head()
 
 
-# In[12]:
+# In[15]:
 
-new_cols = all_locations.columns.tolist()
-new_cols[0] = 'Date'
-all_locations.columns = new_cols
-print all_locations.shape
+del all_locations['level_0']
 all_locations.tail()
 
 
-# In[13]:
+# In[16]:
 
-con = sqlite3.connect(raw_db_filename)
-all_locations.to_sql(con=con, name='for_model_geog', if_exists='replace')
+x_train, x_test, y_train, y_test = train_test_split(all_locations.index, all_locations.flooded, test_size=0.3, stratify=all_locations.flooded)
+
+
+# In[17]:
+
+x_train_fld = all_locations.index[(all_locations.index.isin(x_train)) & (all_locations.flooded==True)]
+x_train_nfld = all_locations.index[(all_locations.index.isin(x_train)) & (all_locations.flooded==False)]
+x_train_nfld_sampled = np.random.choice(x_train_nfld, size=len(x_train_fld))
+x_train_combined = np.concatenate((x_train_fld, x_train_nfld_sampled))
+train_data = all_locations.loc[x_train_combined, :]
+
+
+# In[18]:
+
+test_data = all_locations.loc[x_test, :]
+
+
+# In[19]:
+
+con = sqlite3.connect(db_filename)
+train_data.to_sql(con=con, name='train_geog_data', if_exists='replace')
+test_data.to_sql(con=con, name='test_geog_data', if_exists='replace')
 

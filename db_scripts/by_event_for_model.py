@@ -13,14 +13,16 @@ from focus_intersection import subset_floods, flood_df, subset_locations
 from get_server_data import get_table_for_variable_code, get_db_table_as_df, data_dir, db_filename
 import pandas as pd
 import numpy as np
+import re
 import sqlite3
+import math
 con = sqlite3.connect(db_filename)
 pd.options.mode.chained_assignment = None  # default='warn'
 
 
 # In[2]:
 
-flood_locations = get_db_table_as_df('flood_locations')
+flood_locations = get_db_table_as_df('flood_locations', db_file=db_filename)
 len(flood_locations['location'].unique())
 
 
@@ -29,7 +31,7 @@ len(flood_locations['location'].unique())
 # In[3]:
 
 subset_locations = flood_locations['location']
-flood_events = get_db_table_as_df('flood_events')
+flood_events = get_db_table_as_df('flood_events', db_file=db_filename)
 flood_events['event_date'] = pd.to_datetime(flood_events['event_date'])
 flood_events['event_name'] = flood_events['event_name'].str.strip()
 flood_events['dates'] = pd.to_datetime(flood_events['dates'])
@@ -84,7 +86,7 @@ fl_724[fl_724['location'].duplicated(keep=False)]
 # In[10]:
 
 event_df.sort_index(inplace=True)
-event_df.loc[idx[:, 'Irene'], :]
+event_df.loc[idx[:, 'Irene-2011-08-27'], :]
 
 
 # In[11]:
@@ -137,7 +139,7 @@ event_df.loc[idx['2016-07-30', :], :]
 
 i = event_df.loc[['2016-07-30', 'unnamed'],:].index
 event_df.drop(i, inplace=True)
-i = event_df.loc[idx['2014-09-13', "NAPSG"],:].index
+i = event_df.loc[idx['2014-09-13', "NAPSG-2014-09-13"],:].index
 event_df.drop(i, inplace=True)
 
 
@@ -176,22 +178,17 @@ print event_df.shape
 event_df
 
 
-# ## Now we'll get the rainfall, groundwater, tide, and wind for the events
-# First we need to get all of the data for the variables, aggregate it in various ways up to a daily time step and combine it into a dataframe
-
 # In[21]:
 
-feature_df = pd.DataFrame()
-
-
-# In[30]:
-
-feature_df.to_sql(con=con, name="dntwn_nor_daily_observations", if_exists="replace")
+feature_df = get_db_table_as_df('nor_daily_observations', db_file=db_filename)
+feature_df['Datetime'] = pd.to_datetime(feature_df['Datetime'])
+feature_df.set_index('Datetime', inplace = True)
+feature_df.head()
 
 
 # ### Combine env. data with event data
 
-# In[31]:
+# In[22]:
 
 def add_event_data(evnt_data, evnt_df, col_name, func, idx):
     res = func(evnt_data[col_name])
@@ -201,7 +198,7 @@ def add_event_data(evnt_data, evnt_df, col_name, func, idx):
 
 # Now for each event we get an aggregate of the different variables for the given dates
 
-# In[32]:
+# In[23]:
 
 event_df = pd.concat([event_df, pd.DataFrame(columns=feature_df.columns)])
 
@@ -215,54 +212,72 @@ for ind in event_df.index:
  
     # combining data on event scale
     # get max over the event for these features
-    max_cols = ['rain_hourly_max', 'rain_15_min_max', 'wind_vel_daily_avg', 'wind_vel_hourly_max_avg']
+    max_cols = ['rhrmx', 'r15mx', 'wind_vel_daily_avg', 'wind_vel_hourly_max_avg', 'ht', 'hht', 'lt', 'llt']
     
     # get mean over the event for these features
-    mean_cols = ['gw_daily_avg', 'tide_daily_avg', 'wind_dir_daily_avg']
+    mean_cols = ['W', 'td', 'gw', 'AWDR', 'AWND']
     
     # get sum over the event for these features
-    sum_cols = ['rain_daily_sum']
-    
-    # do something else for these features
-    other_cols = ['rain_prev_3_days', 'rain_hourly_max_time', 'rain_15_min_max_time', 'tide_rhrmx', 'tide_r15mx']
-    
+    sum_cols = ['rd']
     
     for feat in feature_df.columns:
-        if feat in max_cols:
+        if any(feat.startswith(col) for col in max_cols):
             event_df = add_event_data(event_data, event_df, feat, np.max, ind)
-        elif feat in mean_cols:
+        elif any(feat.startswith(col) for col in mean_cols):
             event_df = add_event_data(event_data, event_df, feat, np.mean, ind)
-        elif feat in sum_cols:
+        elif any(feat.startswith(col) for col in sum_cols):
             event_df = add_event_data(event_data, event_df, feat, np.sum, ind)
-        elif feat in other_cols:
-            if feat=='rain_prev_3_days':
-                event_df.loc[ind, feat] = event_data.loc[ind, feat]
-            elif feat == 'rain_hourly_max_time' or feat == 'tide_rhrmx':
-                max_ind = event_data['rain_hourly_max'].idxmax()
+        elif feat.startswith('rd3'):
+            event_df.loc[ind, feat] = event_data.loc[ind, feat]
+        elif re.search(re.compile(r'r\w{2}-\d+_td-\d+'), feat):
+            feat_spl = feat.split('-')
+            var = '{}mx-{}'.format(feat_spl[0], feat_spl[1].split('_')[0])
+            max_ind = event_data[var].idxmax()
+            if isinstance(max_ind, float):
+                if math.isnan(max_ind):
+                    event_df.loc[ind, feat] = np.nan
+            else:
+                val = event_data.loc[max_ind, feat]
                 event_df.loc[ind, feat] = event_data.loc[max_ind, feat]
-            elif feat == 'rain_15_min_max_time' or feat == 'tide_r15mx':
-                max_ind = event_data['rain_15_min_max'].idxmax()
-                event_df.loc[ind, feat] = event_data.loc[max_ind, feat]
-        else:
-            raise ValueError("I don't know how to aggregate this variable on an event scale")
         
 event_df.head()
 
 
-# In[34]:
+# In[24]:
 
-event_df.to_csv('{}event_data.csv'.format(data_dir))
+event_df.shape
 
 
-# In[35]:
+# In[25]:
 
-event_df.iloc[[21,22],3:]
+event_df.head()
+
+
+# In[26]:
+
+cols = event_df.columns.tolist()
+lft_cols = ['event_name', 'dates', 'num_flooded', 'days_away_from_event', 'max_days_away', 'num_dates']
+lft_cols.reverse()
+for c in lft_cols:
+    cols.insert(0, cols.pop(cols.index(c)))
+event_df = event_df.loc[:, cols]
+event_df_for_storage = event_df.reset_index()
+event_df_for_storage['dates'] = event_df_for_storage['dates'].apply(str)
+event_df_for_storage['days_away_from_event'] = event_df_for_storage['days_away_from_event'].apply(str)
+event_df_for_storage.rename(columns={'index':'event_date'}, inplace=True)
+event_df_for_storage.head()
+
+
+# In[27]:
+
+event_df_for_storage.to_csv('{}event_data.csv'.format(data_dir), index=False)
+event_df_for_storage.to_sql(name='event_data', con=con, if_exists='replace', index=False)
 
 
 # ### Combining with the non-flooding event data
 # First we have to combine all the dates in the "dates" column of the event_df into one array so we can filter those out of the overall dataset.
 
-# In[36]:
+# In[28]:
 
 flooded_dates = [np.datetime64(i) for i in event_df.index]
 flooded_dates = np.array(flooded_dates)
@@ -270,7 +285,7 @@ fl_event_dates = np.concatenate(event_df['dates'].tolist())
 all_fl_dates = np.concatenate([fl_event_dates, flooded_dates])
 
 
-# In[37]:
+# In[29]:
 
 non_flooded_records = feature_df[feature_df.index.isin(all_fl_dates) != True]
 non_flooded_records['num_flooded'] = 0
@@ -283,7 +298,7 @@ non_flooded_records.head()
 
 # Combine with flooded events
 
-# In[38]:
+# In[30]:
 
 event_df.reset_index(inplace=True)
 flooded_records = event_df
@@ -292,21 +307,14 @@ flooded_records['flooded'] = True
 flooded_records.head()
 
 
-# In[39]:
+# In[31]:
 
 reformat = pd.concat([flooded_records, non_flooded_records], join='inner')
 reformat.reset_index(inplace=True, drop=True)
 reformat.head()
 
 
-# In[40]:
+# In[32]:
 
-reformat['rain_hourly_max_time'] = reformat['rain_hourly_max_time'].astype('str')  # sqlite does not support native date format
-reformat['rain_15_min_max_time'] = reformat['rain_15_min_max_time'].astype('str')
 reformat.to_sql(name="for_model", con=con, index=False, if_exists='replace')
-
-
-# In[ ]:
-
-
 

@@ -154,8 +154,8 @@ def append_non_duplicates(table, df, check_col):
         return df
 
 
-def get_db_table_as_df(name, sql="""SELECT * FROM {};""", date_col=None):
-    con = sqlite3.connect(raw_db_filename)
+def get_db_table_as_df(name, sql="""SELECT * FROM {};""", date_col=None, db_file=raw_db_filename):
+    con = sqlite3.connect(db_file)
     sql = sql.format(name)
     if name == 'datavalues':
         date_col = 'Datetime'
