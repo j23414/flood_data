@@ -5,8 +5,8 @@
 
 # In[33]:
 
-from db_scripts.get_server_data import data_dir, fig_dir, get_db_table_as_df
-from db_scripts.focus_intersection import subset_locations
+from project_db_scripts.get_server_data import data_dir, fig_dir, get_db_table_as_df
+from project_db_scripts.focus_intersection import subset_locations
 import pandas as pd
 import matplotlib.pyplot as plt
 import math

@@ -3,7 +3,8 @@
 
 # In[1]:
 
-from get_server_data import get_db_table_as_df, db_filename
+from flood_data.hr_db_scripts.main_db_script import get_db_table_as_df
+from main_db_script import db_filename
 import sqlite3
 import pandas as pd
 import numpy as np
@@ -20,14 +21,17 @@ def indicies_where_daily_rain_exceeds_threshold(df, threshold):
 
 # In[3]:
 
-flood_locations = get_db_table_as_df('flood_locations', db_file=db_filename)
-flood_events = get_db_table_as_df('flood_events', date_col=['event_date', 'dates'], db_file=db_filename)
-for_model = get_db_table_as_df('for_model', date_col=['event_date'], db_file=db_filename)
-daily_obs = get_db_table_as_df('nor_daily_observations', date_col=['Datetime'], db_file=db_filename)
+flood_locations = get_db_table_as_df('flood_locations', dbfilename=db_filename)
+flood_events = get_db_table_as_df('flood_events', date_col=['event_date', 'dates'], dbfilename=db_filename)
+for_model = get_db_table_as_df('for_model', date_col=['event_date'], dbfilename=db_filename)
+daily_obs = get_db_table_as_df('nor_daily_observations', date_col=['Datetime'], dbfilename=db_filename)
 
 
 # In[4]:
 
+print flood_locations.shape
+flood_locations = flood_locations[flood_locations.in_hague==1]
+print flood_locations.shape
 flood_locations.head()
 
 
@@ -127,11 +131,13 @@ x_train, x_test, y_train, y_test = train_test_split(all_locations.index, all_loc
 
 # In[17]:
 
-x_train_fld = all_locations.index[(all_locations.index.isin(x_train)) & (all_locations.flooded==True)]
+# x_train_fld = all_locations.index[(all_locations.index.isin(x_train)) & (all_locations.flooded==True)]
+x_train_fld = all_locations.index[all_locations.flooded==True]
 x_train_nfld = all_locations.index[(all_locations.index.isin(x_train)) & (all_locations.flooded==False)]
-x_train_nfld_sampled = np.random.choice(x_train_nfld, size=len(x_train_fld))
+x_train_nfld_sampled = np.random.choice(x_train_nfld, size=len(x_train_fld)*10)
 x_train_combined = np.concatenate((x_train_fld, x_train_nfld_sampled))
 train_data = all_locations.loc[x_train_combined, :]
+# train_data = all_locations
 
 
 # In[18]:
@@ -141,7 +147,12 @@ test_data = all_locations.loc[x_test, :]
 
 # In[19]:
 
+print [a.shape for a in [x_train_fld, x_train_nfld,x_train_combined,train_data,test_data]]
+
+
+# In[20]:
+
 con = sqlite3.connect(db_filename)
-train_data.to_sql(con=con, name='train_geog_data', if_exists='replace')
-test_data.to_sql(con=con, name='test_geog_data', if_exists='replace')
+train_data.to_sql(con=con, name='train_geog_data_hg', if_exists='replace')
+test_data.to_sql(con=con, name='test_geog_data_hg', if_exists='replace')
 

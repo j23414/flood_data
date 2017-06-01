@@ -1,5 +1,5 @@
 import pandas as pd
-from flood_data.db_scripts.get_server_data import data_dir
+from flood_data.project_db_scripts.get_server_data import data_dir
 df = pd.read_csv('{}/norfolk_flooded_roads_data/STORM_data_flooded_streets_2010-2016_orig.csv'.format(data_dir))
 df['location'] = df['location'].str.strip()
 df_dups = pd.read_csv('duplicates.csv')

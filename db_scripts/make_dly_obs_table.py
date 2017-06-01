@@ -7,7 +7,8 @@ get_ipython().magic(u'matplotlib inline')
 import pandas as pd
 import numpy as np
 import sqlite3
-from get_server_data import raw_db_filename, get_table_for_variable_code, get_db_table_as_df, get_code_from_id, db_filename
+from main_db_script import db_filename
+from flood_data.hr_db_scripts.main_db_script import get_table_for_variable_code, get_db_table_as_df
 
 
 # In[2]:

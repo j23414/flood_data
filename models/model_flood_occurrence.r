@@ -44,8 +44,8 @@ db_filename <- "floodData.sqlite"
 
 con = dbConnect(RSQLite::SQLite(), dbname=paste(data_dir, db_filename, sep=""))
 
-test_df = dbReadTable(con, 'test_geog_data')
-train_df = dbReadTable(con, 'train_geog_data')
+test_df = dbReadTable(con, 'test_geog_data_hg')
+train_df = dbReadTable(con, 'train_geog_data_hg')
 
 colnames(test_df)
 
@@ -100,10 +100,10 @@ dt_fmla = as.formula(paste(out_col_name, "~", paste(in_col_names, collapse="+"))
 
 colnames(train_data)
 
-fit = rpart(dt_fmla, method='class', data=train_data)
+fit = rpart(dt_fmla, method='class', data=train_data, minsplit=1, minbucket=1)
 printcp(fit)
 
-tiff(paste(fig_dir, "Plot2.tif"), width=9, height=6, units='in', res = 300)
+tiff(paste(fig_dir, "Plot_hg.tif"), width=9, height=6, units='in', res = 300)
 rpart.plot(fit, under=TRUE, cex=0.9, extra=1, varlen = 6)
 dev.off()
 rpart.plot(fit, under=TRUE, cex=0.9, extra=1, varlen = 6)
@@ -116,8 +116,6 @@ table(trn_out, pred)
 
 pred = predict(pfit, test_data, type = 'class')
 table(tst_out, pred)
-
-pred
 
 forest = randomForest(dt_fmla, data = dt_train_data, importance = TRUE, type="classification", nodesize=2)
 

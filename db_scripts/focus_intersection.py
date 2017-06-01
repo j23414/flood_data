@@ -1,6 +1,6 @@
 import os
 import pandas as pd
-from get_server_data import data_dir
+from main_db_script import data_dir
 directory = os.path.dirname(__file__)
 intersection_name = 'E VIRGINIA BEACH BOULEVARD & TIDEWATER DRIVE'
 flood_df = pd.read_csv(os.path.join(data_dir, 'norfolk_flooded_roads_data/STORM_data_flooded_streets_2010-2016_no_duplicates_clean.csv'))

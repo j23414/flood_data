@@ -1,7 +1,7 @@
 # coding: utf-8
 import pandas as pd
 import matplotlib.pyplot as plt
-from flood_data.db_scripts.get_server_data import data_dir, fig_dir
+from flood_data.project_db_scripts.get_server_data import data_dir, fig_dir
 df = pd.read_csv('{}norfolk_flooded_roads_data/STORM_data_flooded_streets_2010-2016_no_duplicates_clean.csv'.format(data_dir))
 dates = pd.to_datetime(df['_date'])
 df_dates = pd.DataFrame({'dates':dates.unique(), 'count':range(len(dates.unique()))})

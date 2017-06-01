@@ -5,7 +5,7 @@ import json
 import shapefile
 import pandas as pd
 import sqlite3
-from flood_data.db_scripts.get_server_data import get_db_table_as_df, raw_db_filename
+from flood_data.project_db_scripts.get_server_data import get_db_table_as_df, db_filename
 from arcpy import env
 from arcpy.sa import Raster, Ln, Tan, RemapValue, Reclassify, PathDistance, PathAllocation, \
     ExtractMultiValuesToPoints, FocalStatistics, NbrRectangle
@@ -195,20 +195,31 @@ def extract_values_to_points():
     ExtractMultiValuesToPoints(target_shapefile, raster_list, "NONE")
 
 
+def is_in_plygn(ply_shp, pts_shp, field_name):
+    pts_lyr = 'pts_lyr'
+    arcpy.MakeFeatureLayer_management(pts_shp, pts_lyr)
+    try:
+        arcpy.AddField_management(pts_lyr, field_name, "SHORT")
+    except ExecuteError:
+        arcpy.DeleteField_management(pts_lyr, field_name)
+        arcpy.AddField_management(pts_lyr, field_name, "SHORT")
+    arcpy.SelectLayerByLocation_management(pts_lyr, overlap_type='WITHIN',
+                                           select_features=ply_shp)
+    arcpy.CalculateField_management(pts_lyr, field_name, "1")
+
+
 def add_is_downtown_field():
     fld_pts_shp = 'fld_nfld_pts.shp'
-    fld_pts_lyr = 'fld_pts_lyr'
-    arcpy.MakeFeatureLayer_management(fld_pts_shp, fld_pts_lyr)
     dntn_ply = 'subset_polygon.shp'
     dntn_field = 'is_dntn'
-    try:
-        arcpy.AddField_management(fld_pts_lyr, dntn_field, "SHORT")
-    except ExecuteError:
-        arcpy.DeleteField_management(fld_pts_lyr, dntn_field)
-        arcpy.AddField_management(fld_pts_lyr, dntn_field, "SHORT")
-    arcpy.SelectLayerByLocation_management(fld_pts_lyr, overlap_type='WITHIN',
-                                           select_features=dntn_ply)
-    arcpy.CalculateField_management(fld_pts_lyr, dntn_field, "1")
+    is_in_plygn(dntn_ply, fld_pts_shp, dntn_field)
+
+
+def add_is_in_hague():
+    fld_pts_shp = 'fld_nfld_pts.shp'
+    hg_ply = 'ply_near_hague.shp'
+    field = 'in_hague'
+    is_in_plygn(hg_ply, fld_pts_shp, field)
 
 
 def add_flood_pt_field():
@@ -245,6 +256,7 @@ def update_db():
                     'imp',
                     'dist_to_wa',
                     'is_dntn',
+                    'in_hague',
                     'Structure1',
                     'Rim_Elevat',
                     'Invert_Ele',
@@ -265,7 +277,7 @@ def update_db():
                                                      filt_num.columns != 'location'].replace(
         r'\s+', np.nan, regex=True)
     # filt_num = filt_num.replace(r'\s+', np.nan, regex=True)
-    con = sqlite3.connect(raw_db_filename)
+    con = sqlite3.connect(db_filename)
     filt_num.to_sql(con=con, name='flood_locations', if_exists='replace')
 
 
@@ -304,6 +316,7 @@ def main():
     # add_is_downtown_field()
     # extract_values_to_points()
     # join_fld_pts_with_basin_attr()
+    add_is_in_hague()
     update_db()
 
 if __name__ == "__main__":

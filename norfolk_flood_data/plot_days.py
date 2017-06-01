@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-from flood_data.db_scripts.get_server_data import data_dir
+from flood_data.project_db_scripts.get_server_data import data_dir
 import pandas as pd
 
 

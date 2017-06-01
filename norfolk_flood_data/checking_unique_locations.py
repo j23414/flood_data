@@ -1,6 +1,6 @@
 # coding: utf-8
 import pandas as pd
-from flood_data.db_scripts.get_server_data import data_dir
+from flood_data.project_db_scripts.get_server_data import data_dir
 
 def clean_lists(l, first):
     combined = [a[0] + "&" + a[1] for a in l]
