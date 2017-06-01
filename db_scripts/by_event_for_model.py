@@ -6,12 +6,17 @@
 
 # ### Calculate number of locations that flooded
 
-# In[4]:
+# In[1]:
 
 get_ipython().magic(u'matplotlib inline')
+import os
+import sys
+module_path = os.path.abspath(os.path.join('..'))
+if module_path not in sys.path:
+    sys.path.append(module_path)
 from focus_intersection import subset_floods, flood_df, subset_locations
-from flood_data.hr_db_scripts.main_db_script import get_table_for_variable_code, get_db_table_as_df, db_filename
-from db_scripts.main_db_script import data_dir, db_filename
+from main_db_script import data_dir, db_filename
+from hr_db_scripts.main_db_script import get_table_for_variable_code, get_db_table_as_df
 import pandas as pd
 import numpy as np
 import re
@@ -23,7 +28,7 @@ pd.options.mode.chained_assignment = None  # default='warn'
 
 # In[2]:
 
-flood_locations = get_db_table_as_df('flood_locations', db_file=db_filename)
+flood_locations = get_db_table_as_df('flood_locations', dbfilename=db_filename)
 len(flood_locations['location'].unique())
 
 
@@ -32,7 +37,7 @@ len(flood_locations['location'].unique())
 # In[3]:
 
 subset_locations = flood_locations['location']
-flood_events = get_db_table_as_df('flood_events', db_file=db_filename)
+flood_events = get_db_table_as_df('flood_events', dbfilename=db_filename)
 flood_events['event_date'] = pd.to_datetime(flood_events['event_date'])
 flood_events['event_name'] = flood_events['event_name'].str.strip()
 flood_events['dates'] = pd.to_datetime(flood_events['dates'])
@@ -181,7 +186,7 @@ event_df
 
 # In[21]:
 
-feature_df = get_db_table_as_df('nor_daily_observations', db_file=db_filename)
+feature_df = get_db_table_as_df('nor_daily_observations', dbfilename=db_filename)
 feature_df['Datetime'] = pd.to_datetime(feature_df['Datetime'])
 feature_df.set_index('Datetime', inplace = True)
 feature_df.head()
@@ -269,7 +274,7 @@ event_df_for_storage.rename(columns={'index':'event_date'}, inplace=True)
 event_df_for_storage.head()
 
 
-# In[28]:
+# In[27]:
 
 event_df_for_storage.to_csv('{}event_data.csv'.format(data_dir), index=False)
 event_df_for_storage.to_sql(name='event_data', con=con, if_exists='replace', index=False)
@@ -278,7 +283,7 @@ event_df_for_storage.to_sql(name='event_data', con=con, if_exists='replace', ind
 # ### Combining with the non-flooding event data
 # First we have to combine all the dates in the "dates" column of the event_df into one array so we can filter those out of the overall dataset.
 
-# In[29]:
+# In[28]:
 
 flooded_dates = [np.datetime64(i) for i in event_df.index]
 flooded_dates = np.array(flooded_dates)
@@ -286,7 +291,7 @@ fl_event_dates = np.concatenate(event_df['dates'].tolist())
 all_fl_dates = np.concatenate([fl_event_dates, flooded_dates])
 
 
-# In[30]:
+# In[29]:
 
 non_flooded_records = feature_df[feature_df.index.isin(all_fl_dates) != True]
 non_flooded_records['num_flooded'] = 0
@@ -299,7 +304,7 @@ non_flooded_records.head()
 
 # Combine with flooded events
 
-# In[31]:
+# In[30]:
 
 event_df.reset_index(inplace=True)
 flooded_records = event_df
@@ -308,14 +313,14 @@ flooded_records['flooded'] = True
 flooded_records.head()
 
 
-# In[32]:
+# In[31]:
 
 reformat = pd.concat([flooded_records, non_flooded_records], join='inner')
 reformat.reset_index(inplace=True, drop=True)
 reformat.head()
 
 
-# In[33]:
+# In[32]:
 
 reformat.to_sql(name="for_model", con=con, index=False, if_exists='replace')
 

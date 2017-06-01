@@ -4,33 +4,37 @@
 # In[1]:
 
 get_ipython().magic(u'matplotlib inline')
+import os
+import sys
+module_path = os.path.abspath(os.path.join('..'))
+if module_path not in sys.path:
+    sys.path.append(module_path)
 import pandas as pd
 import numpy as np
 import sqlite3
 from main_db_script import db_filename
-from flood_data.hr_db_scripts.main_db_script import get_table_for_variable_code, get_db_table_as_df
+from hr_db_scripts.main_db_script import get_table_for_variable_code, get_db_table_as_df
 
 
 # In[2]:
 
 def round_down_near_24(datetimes): # round down the times near midnight so the tide levels stay on the correct day
     close_time_idx = datetimes.indexer_between_time('23:29', '23:59')
-    adjusted_times = datetimes[close_time_idx] - pd.Timedelta(minutes=30)
+    adjusted_times = datetimes[close_time_idx] - pd.Timedelta(minutes=15)
     dt = pd.Series(datetimes)
     dt[close_time_idx] = adjusted_times
     dt = pd.DatetimeIndex(dt)
     return dt
 
 
-# In[3]:
+# In[22]:
 
 def cln_n_rnd_times(df):
     for i in range(df.shape[1]):
         datetimes = df.iloc[:, i]
         times = pd.DatetimeIndex(datetimes)
         rnd_dn = round_down_near_24(times)
-        rnd_hr = rnd_dn.round(freq='H')
-        df.iloc[:, i] = rnd_hr
+        df.iloc[:, i] = rnd_dn
     return df
 
 
@@ -62,15 +66,16 @@ def filter_max_rain_time_dfs(rain_daily_df, time_df):
     return timemx_filt
 
 
-# In[7]:
+# In[50]:
 
 def tide_when_rain_max(rn_mx_time_df):
-    td_df = get_table_for_variable_code('hourly_height')
+    td_df = get_table_for_variable_code('six_min_tide')
     td_df = pivot_dv_df(td_df)
+    td_df = td_df.resample('15T').mean()
     rn_mx_time_rnd = cln_n_rnd_times(rn_mx_time_df)
     l = []
-    for c in rn_mx_time_df.columns:
-        times = rn_mx_time_df.loc[:, c]
+    for c in rn_mx_time_rnd.columns:
+        times = rn_mx_time_rnd.loc[:, c]
         tides = td_df.loc[times].resample('D').max()
         rain_var = c.split('_')[0]
         rain_site = c.split('-')[-1]
@@ -175,19 +180,19 @@ gw_df.head()
 
 # In[18]:
 
-tide_df = daily_pivot_table('hourly_height', np.mean, 'td_av')
+tide_df = daily_pivot_table('six_min_tide', np.mean, 'td_av')
 tide_df.head()
 
 
 # ##  Tide when rain is at max
 
-# In[19]:
+# In[51]:
 
 td_r15mx = tide_when_rain_max(r15_timemx)
 td_r15mx.head()
 
 
-# In[20]:
+# In[52]:
 
 td_rhrmx = tide_when_rain_max(rhr_timemx)
 td_rhrmx.head()
@@ -195,14 +200,14 @@ td_rhrmx.head()
 
 # ## HI/LOs
 
-# In[21]:
+# In[53]:
 
 hilos = []
 for v in ['high_tide', 'high_high_tide', 'low_tide', 'low_low_tide']:
     hilos.append(daily_pivot_table(v, np.mean, "".join(w[0] for w in v.split('_'))))
 
 
-# In[22]:
+# In[54]:
 
 hilo_df = pd.concat(hilos, axis=1)
 hilo_df.head()
@@ -210,7 +215,7 @@ hilo_df.head()
 
 # #  Wind
 
-# In[23]:
+# In[55]:
 
 wind_dfs = []
 for v in ['WDF2', 'WSF2', 'AWDR', 'AWND', 'WGF6', 'WSF6', 'WDF6']:
@@ -219,7 +224,7 @@ all_wind = pd.concat(wind_dfs, axis=1)
 all_wind.head()
 
 
-# In[24]:
+# In[56]:
 
 feature_df = pd.concat([all_wind, hilo_df, td_r15mx, td_rhrmx, tide_df, gw_df, r15_mx, rhr_mx, rain_daily_comb_named, rain_prev_3_days], axis=1)
 feature_df.head()
@@ -228,7 +233,7 @@ feature_df.head()
 # 
 # ### Save Daily Observations to DB
 
-# In[25]:
+# In[57]:
 
 con = sqlite3.connect(db_filename)
 feature_df.to_sql(con=con, name="nor_daily_observations", if_exists="replace")

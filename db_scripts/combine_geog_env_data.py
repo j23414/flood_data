@@ -3,7 +3,12 @@
 
 # In[1]:
 
-from flood_data.hr_db_scripts.main_db_script import get_db_table_as_df
+import os
+import sys
+module_path = os.path.abspath(os.path.join('..'))
+if module_path not in sys.path:
+    sys.path.append(module_path)
+from hr_db_scripts.main_db_script import get_db_table_as_df
 from main_db_script import db_filename
 import sqlite3
 import pandas as pd
