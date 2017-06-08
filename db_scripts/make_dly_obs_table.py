@@ -27,7 +27,7 @@ def round_down_near_24(datetimes): # round down the times near midnight so the t
     return dt
 
 
-# In[22]:
+# In[3]:
 
 def cln_n_rnd_times(df):
     for i in range(df.shape[1]):
@@ -66,7 +66,7 @@ def filter_max_rain_time_dfs(rain_daily_df, time_df):
     return timemx_filt
 
 
-# In[50]:
+# In[7]:
 
 def tide_when_rain_max(rn_mx_time_df):
     td_df = get_table_for_variable_code('six_min_tide')
@@ -119,6 +119,7 @@ rain_daily15 = daily_pivot_table('rainfall', np.sum, '')
 rain_daily = daily_pivot_table('daily_rainfall', np.sum, '')
 rain_daily_comb_no_name = pd.concat([rain_daily, rain_daily15], axis=1)
 rain_daily_comb_named = rename_cols(rain_daily_comb_no_name, 'rd')
+rain_daily_comb_named.head()
 
 
 # ## Hourly Rainfall
@@ -186,13 +187,13 @@ tide_df.head()
 
 # ##  Tide when rain is at max
 
-# In[51]:
+# In[19]:
 
 td_r15mx = tide_when_rain_max(r15_timemx)
 td_r15mx.head()
 
 
-# In[52]:
+# In[20]:
 
 td_rhrmx = tide_when_rain_max(rhr_timemx)
 td_rhrmx.head()
@@ -200,14 +201,14 @@ td_rhrmx.head()
 
 # ## HI/LOs
 
-# In[53]:
+# In[21]:
 
 hilos = []
 for v in ['high_tide', 'high_high_tide', 'low_tide', 'low_low_tide']:
     hilos.append(daily_pivot_table(v, np.mean, "".join(w[0] for w in v.split('_'))))
 
 
-# In[54]:
+# In[22]:
 
 hilo_df = pd.concat(hilos, axis=1)
 hilo_df.head()
@@ -215,7 +216,7 @@ hilo_df.head()
 
 # #  Wind
 
-# In[55]:
+# In[23]:
 
 wind_dfs = []
 for v in ['WDF2', 'WSF2', 'AWDR', 'AWND', 'WGF6', 'WSF6', 'WDF6']:
@@ -224,7 +225,7 @@ all_wind = pd.concat(wind_dfs, axis=1)
 all_wind.head()
 
 
-# In[56]:
+# In[24]:
 
 feature_df = pd.concat([all_wind, hilo_df, td_r15mx, td_rhrmx, tide_df, gw_df, r15_mx, rhr_mx, rain_daily_comb_named, rain_prev_3_days], axis=1)
 feature_df.head()
@@ -233,8 +234,30 @@ feature_df.head()
 # 
 # ### Save Daily Observations to DB
 
-# In[57]:
+# In[25]:
 
 con = sqlite3.connect(db_filename)
 feature_df.to_sql(con=con, name="nor_daily_observations", if_exists="replace")
+
+
+# ### Make av. table
+
+# In[26]:
+
+cols = pd.Series(feature_df.columns)
+cols_splt = cols.str.split('-', expand=True)
+col_vars = cols_splt[0].unique()
+col_vars
+
+
+# In[27]:
+
+avdf = pd.DataFrame()
+for v in col_vars:
+    avdf[v] = feature_df[[a for a in feature_df.columns if a.startswith(v)]].mean(axis=1)
+
+
+# In[28]:
+
+avdf.to_sql(con=con, name='nor_daily_observations_ave', if_exists='replace')
 
