@@ -37,7 +37,7 @@ df = dbReadTable(con, 'flood_locations')
 colnames(df)
 
 in_col_names = c('elev_1',
-                 'dist_to_ba',
+                 #'dist_to_ba',
                  'imp',
                  'dist_to_wa',
                  'Structure1',
@@ -92,36 +92,6 @@ train_ind = c(fld_train, nfld_train_dwnsmp)
 train_in_data = model_data[train_ind, in_col_names]
 test_in_data = model_data[test_ind, in_col_names]
 
-train_col_stds = apply(train_in_data, 2, sd)
-train_col_means = colMeans(train_in_data)
-
-train_normalized = t((t(train_in_data)-train_col_means)/train_col_stds)
-test_normalized = t((t(test_in_data)-train_col_means)/train_col_stds)
-
-pca = prcomp(train_normalized)
-pca$x = -pca$x
-pca$rotation=-pca$rotation
-p = ggplot(pca$x[,c(1,2)], aes(x=PC1, y=PC2, colour=model_data[train_ind, out_col_name], label=rownames(pca$x)))
-p + geom_point() + geom_text()
-print(pca)
-plot(pca)
-
-trn_preprocessed = predict(pca, train_normalized)
-tst_preprocessed = predict(pca, test_normalized)
-trn_in = trn_preprocessed
-tst_in = tst_preprocessed
-
-train_data = cbind(as.data.frame(trn_in), flood_pt = model_data[train_ind, out_col_name])
-fmla = as.formula(paste(out_col_name, "~", paste(colnames(trn_in), collapse="+")))
-fmla
-
-kfit = knn(trn_in, tst_in, trn_out, k=5)
-table(tst_out, kfit)
-
-svm_fit = svm(fmla, data=train_data)
-svm_pred = predict(svm_fit, tst_in)
-table(tst_out, svm_pred)
-
 dt_fmla = as.formula(paste(out_col_name, "~", paste(in_col_names, collapse="+")))
 dt_train_data = model_data[train_ind, ]
 dt_test_data = model_data[test_ind, in_col_names]
@@ -152,10 +122,9 @@ pred = predict(forest, dt_test_data)
 table(tst_out, pred)
 forest$importance
 
-lo_fit = glm(fmla, family=binomial(link='logit'), data=train_data)
-print(lo_fit)
-
-pred = predict(lo_fit, as.data.frame(tst_in), type="response")
-table(tst_out, round(pred)>0)
+impo = as.data.frame(forest$importance)
+impo = impo[order(-impo$MeanDecreaseGini),]
+par(las=2)
+barplot(impo$MeanDecreaseGini, names.arg=rownames(impo), ylim = c(0, 70))
 
 

@@ -324,3 +324,56 @@ reformat.head()
 
 reformat.to_sql(name="for_model", con=con, index=False, if_exists='replace')
 
+
+# ## Make average table
+
+# In[33]:
+
+cols = pd.Series(feature_df.columns)
+cols_splt = cols.str.split('-', expand=True)
+col_vars = cols_splt[0].unique()
+col_vars
+
+
+# In[34]:
+
+avdf = pd.DataFrame()
+for v in col_vars:
+    avdf[v] = reformat[[a for a in reformat.columns if a.startswith(v)]].mean(axis=1)
+
+
+# In[35]:
+
+avdf = pd.concat([reformat[['event_date', 'event_name', 'num_flooded']], avdf], axis=1)
+
+
+# In[36]:
+
+avdf.head()
+
+
+# In[37]:
+
+avdf['ht'] = np.where(avdf['ht'].isnull(), avdf['hht'], avdf['ht'])
+avdf['hht'] = np.where(avdf['hht'].isnull(), avdf['ht'], avdf['hht'])
+avdf['lt'] = np.where(avdf['lt'].isnull(), avdf['llt'], avdf['lt'])
+avdf['llt'] = np.where(avdf['llt'].isnull(), avdf['lt'], avdf['llt'])
+avdf['WGF6'] = np.where(avdf['WGF6'].isnull(), avdf['AWND'], avdf['WGF6'])
+avdf['WSF6'] = np.where(avdf['WSF6'].isnull(), avdf['AWND'], avdf['WSF6'])
+avdf['WDF6'] = np.where(avdf['WDF6'].isnull(), avdf['AWDR'], avdf['WDF6'])
+
+
+# In[38]:
+
+avdf.to_sql(name='for_model_avgs', con=con, index=False, if_exists='replace')
+
+
+# In[39]:
+
+avdf
+
+
+# In[ ]:
+
+
+

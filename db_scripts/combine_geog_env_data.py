@@ -136,13 +136,13 @@ x_train, x_test, y_train, y_test = train_test_split(all_locations.index, all_loc
 
 # In[17]:
 
-# x_train_fld = all_locations.index[(all_locations.index.isin(x_train)) & (all_locations.flooded==True)]
-x_train_fld = all_locations.index[all_locations.flooded==True]
+x_train_fld = all_locations.index[(all_locations.index.isin(x_train)) & (all_locations.flooded==True)]
+# x_train_fld = all_locations.index[all_locations.flooded==True]
 x_train_nfld = all_locations.index[(all_locations.index.isin(x_train)) & (all_locations.flooded==False)]
-x_train_nfld_sampled = np.random.choice(x_train_nfld, size=len(x_train_fld)*10)
+x_train_nfld_sampled = np.random.choice(x_train_nfld, size=len(x_train_fld)*5)
 x_train_combined = np.concatenate((x_train_fld, x_train_nfld_sampled))
 train_data = all_locations.loc[x_train_combined, :]
-# train_data = all_locations
+train_data = all_locations.loc[x_train, :]
 
 
 # In[18]:
@@ -160,4 +160,9 @@ print [a.shape for a in [x_train_fld, x_train_nfld,x_train_combined,train_data,t
 con = sqlite3.connect(db_filename)
 train_data.to_sql(con=con, name='train_geog_data_hg', if_exists='replace')
 test_data.to_sql(con=con, name='test_geog_data_hg', if_exists='replace')
+
+
+# In[ ]:
+
+
 

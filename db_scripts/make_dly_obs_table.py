@@ -228,6 +228,7 @@ all_wind.head()
 # In[24]:
 
 feature_df = pd.concat([all_wind, hilo_df, td_r15mx, td_rhrmx, tide_df, gw_df, r15_mx, rhr_mx, rain_daily_comb_named, rain_prev_3_days], axis=1)
+feature_df = feature_df.loc['2010-09-15':'2016-10-15']
 feature_df.head()
 
 
@@ -260,4 +261,14 @@ for v in col_vars:
 # In[28]:
 
 avdf.to_sql(con=con, name='nor_daily_observations_ave', if_exists='replace')
+
+
+# In[29]:
+
+avdf.head(10)
+
+
+# In[ ]:
+
+
 
