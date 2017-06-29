@@ -32,17 +32,14 @@ in_col_names = remove_cols(colnames(df), cols_to_remove)
 out_col_name = 'num_flooded'
 
 model_data = df[, append(in_col_names, out_col_name)]
-nrow(model_data)
 model_data = na.omit(model_data)
 model_data = model_data[model_data[,'rd']>0.01,]
-nrow(model_data)
-model_data
 
 all_pred_tst = c()
 all_pred_trn = c()
 all_tst = c()
 all_trn = c()
-model_type = 'rf'
+model_type = 'poisson'
 for (i in 1:100){
   print(paste("run: ", i, sep = ''))
   prt = createDataPartition(model_data[, out_col_name], p=0.7)
@@ -56,6 +53,23 @@ for (i in 1:100){
   fmla = as.formula(paste(out_col_name, "~", paste(in_col_names, collapse="+")))
 
   if (model_type == 'poisson'){
+	train_col_stds = apply(train_in_data, 2, sd)
+	train_col_means = colMeans(train_in_data)
+
+	train_normalized = t((t(train_in_data)-train_col_means)/train_col_stds)
+	test_normalized = t((t(test_in_data)-train_col_means)/train_col_stds)
+
+	pca = prcomp(train_normalized)
+
+	trn_preprocessed = predict(pca, train_normalized)
+	tst_preprocessed = predict(pca, test_normalized)
+
+	fmla = as.formula(paste(out_col_name, "~", paste(colnames(trn_preprocessed), collapse="+")))
+
+	train_data = cbind(as.data.frame(trn_preprocessed), num_flooded = model_data[prt$Resample1, out_col_name])
+	train_in_data = trn_preprocessed
+	test_in_data = tst_preprocessed
+
 	output = glm(fmla, data=train_data, family = poisson)
   }
   else if (model_type == 'rf'){
@@ -101,7 +115,15 @@ for (i in 1:100){
 }
 
 all_trn_df = data.frame(all_trn, all_pred_trn)
+trn_rmse = (mean((all_trn_df[,'all_trn'] - all_trn_df[,'all_pred_trn'])^2))^0.5
+trn_mae = mean(abs(all_trn_df[,'all_trn'] - all_trn_df[,'all_pred_trn']))
 all_tst_df = data.frame(all_tst, all_pred_tst)
+tst_rmse = (mean((all_tst_df[,'all_tst'] - all_tst_df[,'all_pred_tst'])^2))^0.5
+tst_mae = mean(abs(all_tst_df[,'all_tst'] - all_tst_df[,'all_pred_tst']))
+print(trn_rmse) 
+print(trn_mae)
+print(tst_rmse)
+print(tst_mae)
 
 dbWriteTable(con, paste(model_type, '_count_mod_res_train', sep=""), all_trn_df, overwrite=TRUE)
 dbWriteTable(con, paste(model_type, '_count_mod_res_test', sep=""), all_tst_df, overwrite=TRUE)
