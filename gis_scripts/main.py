@@ -1,3 +1,8 @@
+import os
+import sys
+module_path = os.path.abspath(os.path.join('..'))
+if module_path not in sys.path:
+    sys.path.append(module_path)
 import arcpy
 import numpy as np
 from arcgisscripting import ExecuteError
@@ -5,7 +10,8 @@ import json
 import shapefile
 import pandas as pd
 import sqlite3
-from flood_data.project_db_scripts.get_server_data import get_db_table_as_df, db_filename
+from hr_db_scripts.main_db_script import get_db_table_as_df 
+from db_scripts.main_db_script import db_filename
 from arcpy import env
 from arcpy.sa import Raster, Ln, Tan, RemapValue, Reclassify, PathDistance, PathAllocation, \
     ExtractMultiValuesToPoints, FocalStatistics, NbrRectangle

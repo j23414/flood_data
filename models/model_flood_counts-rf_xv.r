@@ -39,14 +39,14 @@ all_pred_tst = c()
 all_pred_trn = c()
 all_tst = c()
 all_trn = c()
-model_type = 'poisson'
+model_type = 'rf'
 for (i in 1:100){
   print(paste("run: ", i, sep = ''))
   prt = createDataPartition(model_data[, out_col_name], p=0.7)
   
-  train_data = model_data[prt$Resample1,]
-  train_in_data = model_data[prt$Resample1, in_col_names]
-  train_out_data = model_data[prt$Resample1, out_col_name]
+  train_data = model_data
+  train_in_data = model_data[, in_col_names]
+  train_out_data = model_data[, out_col_name]
   test_in_data = model_data[-prt$Resample1, in_col_names]
   test_out_data = model_data[-prt$Resample1, out_col_name]
   
@@ -89,7 +89,7 @@ for (i in 1:100){
   train_fld = train_out_data[train_out_data>0]
   pred_trn = predict(output, newdata = as.data.frame(train_in_data), type='response')
   pred_trn_capped = replace(pred_trn, pred_trn > 159, 159)
-  pred_trn_fld = pred_trn_capped[model_data[prt$Resample1, out_col_name]>0]
+  pred_trn_fld = pred_trn_capped[model_data[, out_col_name]>0]
   
   mean(abs(pred_trn_capped - train_out_data))
   mean(abs(train_fld - pred_trn_fld))
