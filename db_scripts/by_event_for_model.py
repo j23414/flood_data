@@ -331,6 +331,10 @@ reformat.to_sql(name="for_model", con=con, index=False, if_exists='replace')
 
 cols = pd.Series(feature_df.columns)
 cols_splt = cols.str.split('-', expand=True)
+# do this to make sure the tide when the hourly and 15-min max rains have unique col names
+for a in cols_splt.iterrows():
+    if a[1].str.contains('\d_td').sum() == 1:
+        cols_splt.loc[a[0], 0] += "_td"
 col_vars = cols_splt[0].unique()
 col_vars
 
@@ -339,7 +343,10 @@ col_vars
 
 avdf = pd.DataFrame()
 for v in col_vars:
-    avdf[v] = reformat[[a for a in reformat.columns if a.startswith(v)]].mean(axis=1)
+    if v not in ['r15_td', 'rhr_td']:
+        avdf[v] = reformat[[a for a in feature_df.columns if a.startswith(v)]].mean(axis=1)
+    else:
+        avdf[v] = reformat[cols[cols.str.contains(r'{}-\d+_td-\d+'.format(v.split('_')[0]))]].mean(axis=1)
 
 
 # In[35]:
@@ -359,8 +366,6 @@ avdf['hht'] = np.where(avdf['hht'].isnull(), avdf['ht'], avdf['hht'])
 avdf['lt'] = np.where(avdf['lt'].isnull(), avdf['llt'], avdf['lt'])
 avdf['llt'] = np.where(avdf['llt'].isnull(), avdf['lt'], avdf['llt'])
 avdf['WGF6'] = np.where(avdf['WGF6'].isnull(), avdf['AWND'], avdf['WGF6'])
-avdf['WSF6'] = np.where(avdf['WSF6'].isnull(), avdf['AWND'], avdf['WSF6'])
-avdf['WDF6'] = np.where(avdf['WDF6'].isnull(), avdf['AWDR'], avdf['WDF6'])
 
 
 # In[38]:

@@ -7,8 +7,11 @@ library(dplyr)
 library(RSQLite)
 library(DBI)
 library(class)
-library(pscl)
+library(MASS)
+# library(pscl)
+library(nnet)
 library(randomForest)
+library(e1071)
 
 remove_cols= function(l, cols){
     return(l[! l %in% cols])
@@ -39,20 +42,21 @@ all_pred_tst = c()
 all_pred_trn = c()
 all_tst = c()
 all_trn = c()
-model_type = 'rf'
+model_type = 'poisson'
 for (i in 1:100){
   print(paste("run: ", i, sep = ''))
   prt = createDataPartition(model_data[, out_col_name], p=0.7)
   
-  train_data = model_data
-  train_in_data = model_data[, in_col_names]
-  train_out_data = model_data[, out_col_name]
+  train_data = model_data[prt$Resample1,]
+  train_in_data = train_data[, in_col_names]
+  train_out_data = train_data[, out_col_name]
   test_in_data = model_data[-prt$Resample1, in_col_names]
   test_out_data = model_data[-prt$Resample1, out_col_name]
   
   fmla = as.formula(paste(out_col_name, "~", paste(in_col_names, collapse="+")))
 
-  if (model_type == 'poisson'){
+  #if (model_type != 'rf' & model_type != 'zeroinf'){
+  if (1==0){
 	train_col_stds = apply(train_in_data, 2, sd)
 	train_col_means = colMeans(train_in_data)
 
@@ -69,38 +73,62 @@ for (i in 1:100){
 	train_data = cbind(as.data.frame(trn_preprocessed), num_flooded = model_data[prt$Resample1, out_col_name])
 	train_in_data = trn_preprocessed
 	test_in_data = tst_preprocessed
-
-	output = glm(fmla, data=train_data, family = poisson)
+  	if (model_type == 'poisson'){output = glm(fmla, data=train_data, family = poisson)}
+  	else if (model_type == 'quasipoisson'){output = glm(fmla, data=train_data, family = quasipoisson)}
+	  else if (model_type == 'negb'){output = glm.nb(fmla, data=train_data)}
+	  else if (model_type == 'ann'){
+	    num_units_in_hidden_layers = 3 # called M in our notes and text
+	    range_for_initial_random_weights = 0.5 # see next three lines of comments
+	    weight_decay = 5e-4 # weight decaay to avoid overfitting
+	    maximum_iterations = 400 # maximum number of iterations in training
+	    output = nnet(fmla, data=train_data, 
+	                  size = num_units_in_hidden_layers, 
+	                  rang = range_for_initial_random_weights,
+	                  decay = weight_decay, 
+	                  maxit = maximum_iterations)
+	    }
+	  else if (model_type == 'svm'){output = svm(fmla, data=train_data)}
+	
   }
   else if (model_type == 'rf'){
 	output = randomForest(fmla, data=train_data, importance = TRUE)
 	impo = as.data.frame(output$importance)
-	if (i == 1){
-	  impo_df = data.frame(impo[,1])
-	}
-	else{
-	  impo_df = cbind(impo_df, impo[,1])
-	}
+  	if (i == 1){
+  	  impo_df = data.frame(impo[,1])
+  	}
+  	else{
+  	  impo_df = cbind(impo_df, impo[,1])
+  	}
   }
+  else if (model_type == 'poisson'){output = glm(fmla, data=train_data, family = poisson)}
   else if (model_type == 'zeroinf'){
 	output = zeroinfl(fmla, data=train_data, importance = TRUE)
   }
+  else if (model_type == 'quasipoisson'){output = glm(fmla, data=train_data, family = quasipoisson)}
+  else if (model_type == 'negb'){output = glm.nb(fmla, data=train_data)}
+  else if (model_type == 'ann'){
+    num_units_in_hidden_layers = 3 # called M in our notes and text
+    range_for_initial_random_weights = 0.5 # see next three lines of comments
+    weight_decay = 5e-4 # weight decaay to avoid overfitting
+    maximum_iterations = 400 # maximum number of iterations in training
+    output = nnet(fmla, data=train_data, 
+                  size = num_units_in_hidden_layers, 
+                  rang = range_for_initial_random_weights,
+                  decay = weight_decay, 
+                  maxit = maximum_iterations)
+  }
+  else if (model_type == 'svm'){output = svm(fmla, data=train_data)}
   
   train_fld = train_out_data[train_out_data>0]
   pred_trn = predict(output, newdata = as.data.frame(train_in_data), type='response')
-  pred_trn_capped = replace(pred_trn, pred_trn > 159, 159)
+  pred_trn_capped = pred_trn 
   pred_trn_fld = pred_trn_capped[model_data[, out_col_name]>0]
-  
-  mean(abs(pred_trn_capped - train_out_data))
-  mean(abs(train_fld - pred_trn_fld))
-  
+
   max_val = max(max(train_fld), max(pred_trn_fld))
-  
-  plot(pred_trn_fld, train_fld, asp=1, ylim=c(0,max_val), xlim=c(0,max_val))
-  
+ 
   test_fld = test_out_data[test_out_data>0]
   pred = predict(output, newdata = as.data.frame(test_in_data), type='response')
-  pred_capped = replace(pred, pred > 159, 159)
+  pred_capped = pred 
   pred_fld = pred_capped[model_data[-prt$Resample1, out_col_name]>0]
   
   max_val = max(max(test_fld), max(pred_fld))

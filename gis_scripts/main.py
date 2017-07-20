@@ -4,10 +4,10 @@ module_path = os.path.abspath(os.path.join('..'))
 if module_path not in sys.path:
     sys.path.append(module_path)
 import arcpy
+from gis_utils import read_shapefile_attribute_table
 import numpy as np
 from arcgisscripting import ExecuteError
 import json
-import shapefile
 import pandas as pd
 import sqlite3
 from hr_db_scripts.main_db_script import get_db_table_as_df 
@@ -122,16 +122,6 @@ def join_sw_structures_with_pipe_data():
     print "SpatialJoin_analysis"
     arcpy.SpatialJoin_analysis(sw_str, sw_pipe, out_file_name, match_option='CLOSEST')
     return out_file_name
-
-
-def read_shapefile_attribute_table(sf_name):
-    sf = shapefile.Reader(sf_name)
-    records = sf.records()
-    df = pd.DataFrame(records)
-    sf_field_names = [i[0] for i in sf.fields]
-    df.columns = sf_field_names[1:]
-    df.reset_index(inplace=True)
-    return df
 
 
 def sample_road_points():

@@ -1,6 +1,7 @@
 # coding: utf-8
 # this script is to thin intersection points so that they are at least a certain distance apart
-from main import read_shapefile_attribute_table, gis_data_dir 
+from main import gis_data_dir 
+from gis_utils import read_shapefile_attribute_table 
 import matplotlib.pyplot as plt
 import pandas as pd
 
@@ -18,9 +19,14 @@ while True:
         if city == 'nor':
             intersection_shapefile_name = 'nor_intersections_diss_jn.shp'
             mil_filt = "VDOT = 9"
+            where_clause = """ "FID" IN ({}) AND NOT {} """.format(",".join(map(str, unique_idx)), mil_filt)
         elif city == 'vab':
             intersection_shapefile_name = 'vab_intersections_jn.shp'
-            mil_filt = """ "CLASS" = 'MILITARY' """
+            where_clause = """ "FID" IN ({})""".format(",".join(map(str, unique_idx)))
+            elev_raster = Raster('C:/Users/Jeff/Google Drive/research/Hampton Roads Data/Geographic Data/'
+                                 'Raster/USGS VABeach DEM/mosaic/usgs_mosaic_float.tif')
+            raster_list = [[elev_raster, 'elev']] 
+            ExtractMultiValuesToPoints(intersection_shapefile_name, raster_list, "NONE")
         first_time = False
     else:
         intersection_shapefile_name = out_file.format(city, num-1)
@@ -34,7 +40,6 @@ while True:
         break
     unique_idx = list(df[~df.NEAR_DIST.duplicated()].index)
     unique_idx.extend(big_indicies)
-    where_clause = """ "FID" IN ({}) AND NOT {} """.format(",".join(map(str, unique_idx)), mil_filt)
     print "Select_analysis"
     arcpy.Select_analysis(intersection_shapefile_name, out_file_name, where_clause)
     arcpy.Near_analysis(out_file_name, out_file_name)

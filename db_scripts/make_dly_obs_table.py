@@ -167,9 +167,24 @@ rain_prev_3_days = rename_cols(rain_prev_3_days, 'r3d')
 rain_prev_3_days.head()
 
 
+# In[17]:
+
+rain_daily_comb_named['rd-14'][rain_daily_comb_named['rd-14']<0]
+
+
+# In[18]:
+
+rain15.loc['2014-06-24']
+
+
+# In[19]:
+
+rain_prev_3_days.plot.box()
+
+
 # #  Groundwater
 
-# In[17]:
+# In[20]:
 
 gw_df = daily_pivot_table('shallow_well_depth', np.mean, 'gw_av')
 gw_df.head()
@@ -179,7 +194,7 @@ gw_df.head()
 
 # ## Average daily tide
 
-# In[18]:
+# In[21]:
 
 tide_df = daily_pivot_table('six_min_tide', np.mean, 'td_av')
 tide_df.head()
@@ -187,13 +202,13 @@ tide_df.head()
 
 # ##  Tide when rain is at max
 
-# In[19]:
+# In[22]:
 
 td_r15mx = tide_when_rain_max(r15_timemx)
 td_r15mx.head()
 
 
-# In[20]:
+# In[23]:
 
 td_rhrmx = tide_when_rain_max(rhr_timemx)
 td_rhrmx.head()
@@ -201,14 +216,14 @@ td_rhrmx.head()
 
 # ## HI/LOs
 
-# In[21]:
+# In[24]:
 
 hilos = []
 for v in ['high_tide', 'high_high_tide', 'low_tide', 'low_low_tide']:
     hilos.append(daily_pivot_table(v, np.mean, "".join(w[0] for w in v.split('_'))))
 
 
-# In[22]:
+# In[25]:
 
 hilo_df = pd.concat(hilos, axis=1)
 hilo_df.head()
@@ -216,16 +231,26 @@ hilo_df.head()
 
 # #  Wind
 
-# In[23]:
+# In[26]:
 
 wind_dfs = []
-for v in ['WDF2', 'WSF2', 'AWDR', 'AWND', 'WGF6', 'WSF6', 'WDF6']:
-    wind_dfs.append(daily_pivot_table(v, np.mean, v))
+for v in ['WDF2', 'WSF2', 'AWDR', 'AWND', 'WGF6', 'WSF6', 'WDF6', 'WS2min', 'WD2min']:
+    if v == 'WSF6':
+        abbr = 'AWND'
+    elif v == 'WDF6':
+        abbr = 'AWDR'
+    elif v == 'WS2min':
+        abbr = 'AWND'
+    elif v == 'WD2min':
+        abbr = 'AWDR'
+    else:
+        abbr = v
+    wind_dfs.append(daily_pivot_table(v, np.mean, abbr))
 all_wind = pd.concat(wind_dfs, axis=1)
 all_wind.head()
 
 
-# In[24]:
+# In[27]:
 
 feature_df = pd.concat([all_wind, hilo_df, td_r15mx, td_rhrmx, tide_df, gw_df, r15_mx, rhr_mx, rain_daily_comb_named, rain_prev_3_days], axis=1)
 feature_df = feature_df.loc['2010-09-15':'2016-10-15']
@@ -235,7 +260,7 @@ feature_df.head()
 # 
 # ### Save Daily Observations to DB
 
-# In[25]:
+# In[28]:
 
 con = sqlite3.connect(db_filename)
 feature_df.to_sql(con=con, name="nor_daily_observations", if_exists="replace")
@@ -243,29 +268,36 @@ feature_df.to_sql(con=con, name="nor_daily_observations", if_exists="replace")
 
 # ### Make av. table
 
-# In[26]:
+# In[29]:
 
 cols = pd.Series(feature_df.columns)
 cols_splt = cols.str.split('-', expand=True)
+# do this to make sure the tide when the hourly and 15-min max rains have unique col names
+for a in cols_splt.iterrows():
+    if a[1].str.contains('\d_td').sum() == 1:
+        cols_splt.loc[a[0], 0] += "_td"
 col_vars = cols_splt[0].unique()
 col_vars
 
 
-# In[27]:
+# In[30]:
 
 avdf = pd.DataFrame()
 for v in col_vars:
-    avdf[v] = feature_df[[a for a in feature_df.columns if a.startswith(v)]].mean(axis=1)
+    if v not in ['r15_td', 'rhr_td']:
+        avdf[v] = feature_df[[a for a in feature_df.columns if a.startswith(v)]].mean(axis=1)
+    else:
+        avdf[v] = feature_df[cols[cols.str.contains(r'{}-\d+_td-\d+'.format(v.split('_')[0]))]].mean(axis=1)
 
 
-# In[28]:
+# In[31]:
 
 avdf.to_sql(con=con, name='nor_daily_observations_ave', if_exists='replace')
 
 
-# In[29]:
+# In[32]:
 
-avdf.head(10)
+avdf.head(20)
 
 
 # In[ ]:

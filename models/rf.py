@@ -27,4 +27,3 @@ ax.set_xlim((0, maxval*1.05))
 ax.set_ylim((0, maxval*1.05))
 plt.show()
 
-train, test = train_test_split(df, test_size=0.25, stratify=df[out_col])
