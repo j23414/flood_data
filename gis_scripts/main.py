@@ -124,14 +124,18 @@ def join_sw_structures_with_pipe_data():
     return out_file_name
 
 
+def get_rd_classes(rd_pts_file_name):
+    rd_pts_df = read_shapefile_attribute_table(rd_pts)
+    cls = fld_pt_df.groupby('VDOT')['count'].sum().sort_values(ascending=False)
+    cls = cls / cls.sum() * 100
+    return cls
+
+
 def sample_road_points():
     fld_pts = '{}fld_pts_rd_data.shp'.format(gis_data_dir)
     rd_pts = '{}rd_far_fld.shp'.format(gis_data_dir)
     fld_pt_df = read_shapefile_attribute_table(fld_pts)
-    rd_pts_df = read_shapefile_attribute_table(rd_pts)
-    cls = fld_pt_df.groupby('VDOT')['count'].sum().sort_values(ascending=False)
-    cls = cls / cls.sum() * 100
-    print cls
+    cls = get_rd_classes(rd_pts)
     num_samples = (cls * 750 / 100).round()
 
     l = []
