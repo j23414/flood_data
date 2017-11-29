@@ -4,7 +4,7 @@ module_path = os.path.abspath(os.path.join('..'))
 if module_path not in sys.path:
     sys.path.append(module_path)
 import arcpy
-from gis_utils import read_shapefile_attribute_table
+from gis_utils import read_shapefile_attribute_table, gis_proj_dir, gis_main_dir, elev_raster 
 import numpy as np
 from arcgisscripting import ExecuteError
 import json
@@ -16,17 +16,15 @@ from arcpy import env
 from arcpy.sa import Raster, Ln, Tan, RemapValue, Reclassify, PathDistance, PathAllocation, \
     ExtractMultiValuesToPoints, FocalStatistics, NbrRectangle
 import math
-gis_data_dir = "C:/Users/Jeff/Google Drive/research/Sadler_3rdPaper_GIS_data/"
 
 arcpy.CheckOutExtension("spatial")
 env.overwriteOutput = True
-env.workspace = gis_data_dir
+env.workspace = gis_proj_dir
 
 
 def calculate_twi():
     slope_raster = Raster("slope_nor.tif")
-    flacc = Raster("C:/Users/Jeff/Google Drive/research/Hampton Roads Data/Geographic Data/Raster/"
-                   "USGS Nor DEM/mosaic/nor_flacc")
+    flacc = Raster("{}Raster/USGS Nor DEM/mosaic/nor_flacc".format(gis_main_dir))
     twi = Ln((flacc+1.)/(Tan((slope_raster+.0001)*math.pi/180.)))
     out_file_name = 'twi.tif'
     twi.save(out_file_name)
@@ -64,9 +62,8 @@ def imperviousness_raster():
 
 
 def path_allocation_basins():
-    src_raster = '{}/Stormwater Infrastructure/sw_struct_basins.shp'.format(gis_data_dir)
-    elev_raster = Raster('C:/Users/Jeff/Google Drive/research/Hampton Roads Data/Geographic Data/'
-                         'Raster/USGS Nor DEM/mosaic/nor_mosaic.tif')
+    src_raster = '{}/Stormwater Infrastructure/sw_struct_basins.shp'.format(gis_proj_dir)
+    elev_raster = Raster(elev_raster)
     out_file_name = 'path_allo_basins.tif'
     pth_all = PathAllocation(src_raster, source_field="FID", in_surface_raster=elev_raster,
                              in_vertical_raster=elev_raster)
@@ -81,7 +78,7 @@ def path_dist_water():
 
 
 def path_dist_basins():
-    src_raster = '{}/Stormwater Infrastructure/sw_struct_basins.shp'.format(gis_data_dir)
+    src_raster = '{}/Stormwater Infrastructure/sw_struct_basins.shp'.format(gis_proj_dir)
     out_file_name = 'path_dist_basins.tif'
     calculate_dist_to_src(src_raster, out_file_name)
 
@@ -91,8 +88,7 @@ def calculate_dist_to_src(src_raster, out_file_name):
     uses water raster as source should have run reclassify_lulc_for_water first
     :return: 
     """
-    elev_raster = Raster('C:/Users/Jeff/Google Drive/research/Hampton Roads Data/Geographic Data/'
-                         'Raster/USGS Nor DEM/mosaic/nor_mosaic.tif')
+    elev_raster = Raster(elev_raster)
     path_dist = PathDistance(in_source_data=src_raster, in_surface_raster=elev_raster,
                              in_vertical_raster=elev_raster)
     path_dist.save(out_file_name)
@@ -106,16 +102,14 @@ def merge_flood_non_flood():
     arcpy.Merge_management([flood_pts, non_flood_pts], out_file_name)
 
 
-def join_flooded_pts_with_rd_attributes():
-    flood_pts = 'flooded_points.shp'
-    road_lines = 'nor_roads_centerlines.shp'
-    out_file_name = 'fld_pts_rd_data.shp'
+def join_flooded_pts_with_rd_attributes(flood_pts='flooded_points.shp', road_lines='nor_roads_centerlines.shp', 
+        out_file_name = 'fld_pts_rd_data.shp'):
     print "SpatialJoin_analysis"
     arcpy.SpatialJoin_analysis(flood_pts, road_lines, out_file_name, match_option='CLOSEST')
 
 
 def join_sw_structures_with_pipe_data():
-    data_dir = '{}Stormwater Infrastructure/'.format(gis_data_dir)
+    data_dir = '{}Stormwater Infrastructure/'.format(gis_proj_dir)
     sw_str = '{}Norfolk_SW_Structures.shp'.format(data_dir)
     sw_pipe = '{}Norfolk_SW_Pipes.shp'.format(data_dir)
     out_file_name = '{}sw_structures_joined_pipes.shp'.format(data_dir)
@@ -124,17 +118,13 @@ def join_sw_structures_with_pipe_data():
     return out_file_name
 
 
-def get_rd_classes(rd_pts_file_name):
+def sample_road_points():
+    fld_pts = '{}fld_pts_rd_data.shp'.format(gis_proj_dir)
+    rd_pts = '{}rd_far_fld.shp'.format(gis_proj_dir)
+    fld_pt_df = read_shapefile_attribute_table(fld_pts)
     rd_pts_df = read_shapefile_attribute_table(rd_pts)
     cls = fld_pt_df.groupby('VDOT')['count'].sum().sort_values(ascending=False)
     cls = cls / cls.sum() * 100
-    return cls
-
-
-def sample_road_points():
-    fld_pts = '{}fld_pts_rd_data.shp'.format(gis_data_dir)
-    rd_pts = '{}rd_far_fld.shp'.format(gis_data_dir)
-    fld_pt_df = read_shapefile_attribute_table(fld_pts)
     cls = get_rd_classes(rd_pts)
     num_samples = (cls * 750 / 100).round()
 
@@ -160,10 +150,10 @@ def sample_road_points():
 
 
 def make_basin_shapefile():
-    sw_strct = '{}/Stormwater Infrastructure/sw_structures_joined_pipes.shp'.format(gis_data_dir)
+    sw_strct = '{}/Stormwater Infrastructure/sw_structures_joined_pipes.shp'.format(gis_proj_dir)
     basin_codes = filter_sw_struc_codes('basin')
     where_clause = '"Structure1" IN (\'{}\')'.format("','".join(map(str, basin_codes)))
-    out_file_name = '{}/Stormwater Infrastructure/sw_struct_basins.shp'.format(gis_data_dir)
+    out_file_name = '{}/Stormwater Infrastructure/sw_struct_basins.shp'.format(gis_proj_dir)
     print "Select_analysis"
     arcpy.Select_analysis(sw_strct, out_file_name, where_clause)
     return out_file_name
@@ -171,7 +161,7 @@ def make_basin_shapefile():
 
 def filter_sw_struc_codes(term='basin'):
     metadata_file_name = '{}/Stormwater Infrastructure/nor_sw_structures_metadata.txt'.format(
-        gis_data_dir)
+        gis_proj_dir)
     with open(metadata_file_name) as sw_data:
         d = json.load(sw_data)
     structure_types = d['fields'][3]['domain']['codedValues']
@@ -184,8 +174,7 @@ def filter_sw_struc_codes(term='basin'):
 
 def extract_values_to_points():
     target_shapefile = 'fld_nfld_pts.shp'
-    elev_raster = Raster('C:/Users/Jeff/Google Drive/research/Hampton Roads Data/Geographic Data/'
-                         'Raster/USGS Nor DEM/mosaic/nor_mosaic.tif')
+    elev_raster = Raster(elev_raster)
     raster_list = [['twi.tif', 'twi'],
                    [elev_raster, 'elev'],
                    ['path_dist_basins.tif', 'dist_to_basin'],
@@ -239,13 +228,13 @@ def add_flood_pt_field():
 
 def join_fld_pts_with_basin_attr():
     fld_pts_shp = 'fld_nfld_pts.shp'
-    sw_table = '{}/Stormwater Infrastructure/sw_struct_basins.shp'.format(gis_data_dir)
+    sw_table = '{}/Stormwater Infrastructure/sw_struct_basins.shp'.format(gis_proj_dir)
     arcpy.JoinField_management(fld_pts_shp, in_field='basin_id', join_table=sw_table,
                                join_field='FID')
 
 
 def update_db():
-    fld_loc = read_shapefile_attribute_table('{}fld_nfld_pts.shp'.format(gis_data_dir))
+    fld_loc = read_shapefile_attribute_table('{}fld_nfld_pts.shp'.format(gis_proj_dir))
     needed_attrs = ['location',
                     'xcoord',
                     'ycoord',
@@ -293,7 +282,7 @@ def make_rand_road_pts():
     arcpy.FeatureVerticesToPoints_management(road_shapefile, road_pts_file)
     rand_rd_pts_file = 'rand_road.shp'
     rand_rd_pts_lyr = 'rand_road_lyr'
-    arcpy.CreateRandomPoints_management(gis_data_dir, rand_rd_pts_file, road_pts_file,
+    arcpy.CreateRandomPoints_management(gis_proj_dir, rand_rd_pts_file, road_pts_file,
                                         number_of_points_or_field=50000,
                                         minimum_allowed_distance=200)
     fld_pts_file = 'flooded_points.shp'
@@ -316,8 +305,9 @@ def main():
     # add_is_downtown_field()
     # extract_values_to_points()
     # join_fld_pts_with_basin_attr()
-    add_is_in_hague()
-    update_db()
+    # add_is_in_hague()
+    # update_db()
+
 
 if __name__ == "__main__":
     main()

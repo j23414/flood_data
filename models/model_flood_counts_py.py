@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# In[15]:
+# In[1]:
 
 get_ipython().magic(u'matplotlib inline')
 from sklearn.ensemble import RandomForestRegressor
@@ -12,6 +12,7 @@ from sklearn.metrics import mean_absolute_error
 from sklearn.metrics import mean_squared_error
 from sklearn.metrics import r2_score
 from sklearn.svm import SVR
+from sklearn.model_selection import GridSearchCV
 from sklearn.model_selection import cross_val_predict
 import os
 import sys
@@ -93,68 +94,53 @@ print mean_squared_error(df.num_flooded, reg.oob_prediction_)
 
 # ## Cross validation
 
-# In[13]:
+# In[11]:
 
-models = [SVR(), 
-          RandomForestRegressor(oob_score=True, n_estimators=1000, max_features=0.33), 
-          MLPRegressor()
-         ]
+bins = np.linspace(0, 110, 6)
 
 
-# In[28]:
-
-for m in models:
-    scores = cross_val_score(m, df[in_cols], df[out_col], n_jobs=-1, cv=10, scoring='mean_squared_error')
-    scores1 = cross_val_score(m, df[in_cols], df[out_col], n_jobs=-1, cv=10, scoring='mean_absolute_error')
-    print m
-    print abs(scores.mean())**0.5
-    print abs(scores1.mean())
-    print scores
-
-
-# In[82]:
-
-df[out_col]
-
-
-# In[92]:
-
-df[out_col].sort_values(ascending=False)[:10]
-
-
-# In[159]:
-
-bins = np.linspace(0, 100, 4)
-
-
-# In[160]:
+# In[12]:
 
 bins
 
 
-# In[161]:
+# In[13]:
 
 y_binned = np.digitize(df[out_col], bins)
 
 
-# In[162]:
+# In[14]:
 
 pd.Series(y_binned, dtype='category').value_counts()
 
 
-# In[156]:
+# In[15]:
 
 x_train, x_test, y_train, y_test = train_test_split(df[in_cols], df[out_col], stratify = y_binned, test_size = 0.3)
 
 
-# In[157]:
+# In[16]:
 
-y_train
+C_range = np.logspace(-2, 10, 13)
+gamma_range = np.logspace(-9, 3, 13)
+param_grid = dict(gamma=gamma_range, C=C_range)
+grid = GridSearchCV(SVR(), param_grid=param_grid)
+grid.fit(x_train, y_train)
 
 
-# In[158]:
+# In[17]:
 
-y_test
+grid
+
+
+# In[18]:
+
+'try'
+
+
+# In[19]:
+
+a = 't'
 
 
 # In[ ]:
