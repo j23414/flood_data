@@ -30,8 +30,8 @@ run_model = function(model_type, trn_data, trn_in_data, trn_out_data, tst_in_dat
 	fmla = as.formula(paste(out_col_name, "~", paste(colnames(trn_preprocessed), collapse="+")))
 
 	train_data = cbind(as.data.frame(trn_preprocessed), num_flooded = model_data[prt$Resample1, out_col_name])
-	train_in_data = trn_preprocessed
-	test_in_data = tst_preprocessed
+	trn_in_data = trn_preprocessed
+	tst_in_data = tst_preprocessed
   	if (model_type == 'poisson'){output = glm(fmla, data=train_data, family = poisson)}
   	else if (model_type == 'quasipoisson'){output = glm(fmla, data=train_data, family = quasipoisson)}
 	  else if (model_type == 'negb'){output = glm.nb(fmla, data=train_data)}
@@ -55,9 +55,9 @@ run_model = function(model_type, trn_data, trn_in_data, trn_out_data, tst_in_dat
 	impo = impo[,1]
   }
 
-  pred_trn = predict(output, newdata = as.data.frame(train_in_data), type='response')
+  pred_trn = predict(output, newdata = as.data.frame(trn_in_data), type='response')
 
-  pred_tst = predict(output, newdata = as.data.frame(test_in_data), type='response')
+  pred_tst = predict(output, newdata = as.data.frame(tst_in_data), type='response')
   if (model_type == 'rf'){
        return(list(pred_trn, pred_tst, impo))
   }
@@ -99,7 +99,7 @@ set.seed(5)
 
 df = df[df[,'rd']>0.01,]
 
-cols_to_remove = c('event_name', 'event_date', 'num_flooded', 'rd')
+cols_to_remove = c('event_name', 'event_date', 'num_flooded', 'WDF2', 'WSF2', 'AWDR', 'AWND', 'WGF6', 'ht', 'hht', 'lt', 'llt', 'r15_td', 'rhr_td', 'td_av', 'gw_av', 'r15mx', 'rhrmx', 'r3d')
 in_col_names = remove_cols(colnames(df), cols_to_remove)
 out_col_name = 'num_flooded'
 
@@ -113,14 +113,16 @@ all_tst = c()
 all_trn = c()
 fomla = as.formula(paste(out_col_name, "~", paste(in_col_names, collapse="+")))
 model_types = c('rf', 'poisson')
-suffix = 'no_rd'
+suffix = 'only_rd'
 clear_db_tables(model_types, con, suffix)
 for (i in 1:100){
   prt = createDataPartition(model_data[, out_col_name], p=0.7)
   train_data = model_data[prt$Resample1,]
-  train_in_data = train_data[, in_col_names]
+  train_in_data = data.frame(train_data[, in_col_names])
+  colnames(train_in_data) = in_col_names
   train_out_data = train_data[, out_col_name]
-  test_in_data = model_data[-prt$Resample1, in_col_names]
+  test_in_data = data.frame(model_data[-prt$Resample1, in_col_names])
+  colnames(test_in_data) = in_col_names
   test_out_data = model_data[-prt$Resample1, out_col_name]
   
   for (model in model_types){
