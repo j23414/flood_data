@@ -11,8 +11,12 @@
 
 # In[1]:
 
+get_ipython().magic(u'matplotlib inline')
+
 from hr_db_scripts.main_db_script import get_db_table_as_df
 from db_scripts.main_db_script import db_filename
+from results import make_results_df
+import pandas as pd
 
 
 # In[2]:
@@ -20,10 +24,10 @@ from db_scripts.main_db_script import db_filename
 def get_tables(table_suffix):
 
 
-    rf_trn_tbl = 'rf{}trn'.format(table_suffix)
-    rf_tst_tbl = 'rf{}tst'.format(table_suffix)
-    ps_trn_tbl = 'poisson{}trn'.format(table_suffix)
-    ps_tst_tbl = 'poisson{}tst'.format(table_suffix)
+    rf_trn_tbl = 'rf{}train'.format(table_suffix)
+    rf_tst_tbl = 'rf{}test'.format(table_suffix)
+    ps_trn_tbl = 'poisson{}train'.format(table_suffix)
+    ps_tst_tbl = 'poisson{}test'.format(table_suffix)
 
     rf_trn = get_db_table_as_df(rf_trn_tbl, dbfilename=db_filename)
     rf_tst = get_db_table_as_df(rf_tst_tbl, dbfilename=db_filename)
@@ -77,7 +81,7 @@ tables1 = get_tables(suffix)
 (tables1['rf_trn']['all_trn'] != tables['rf_trn']['all_trn']).sum()
 
 
-# In[14]:
+# In[10]:
 
 (tables1['rf_trn']['all_pred_trn'] != tables['rf_trn']['all_pred_trn']).sum()
 
@@ -98,3 +102,182 @@ tables1 = get_tables(suffix)
 
 
 # So now they are all the same
+
+# ### Question #1 sensitivity to number of trees
+
+# In[14]:
+
+trees = [2, 5, 10, 17, 25, 35, 50, 100, 250, 350, 500, 650, 750, 1000, 2000]
+
+
+# In[15]:
+
+tables = {}
+
+
+# In[16]:
+
+for t in trees:
+    tables[t] = 'rf_{}'.format(t)
+tables[500] = 'revisions1'
+
+
+# In[17]:
+
+dfs = []
+for t in tables:
+    df = make_results_df(models=['rf'], suffix=tables[t])
+    df.index = [t]
+    dfs.append(df)
+df_comb = pd.concat(dfs)
+
+
+# In[18]:
+
+df_comb.sort_index(inplace=True)
+ax = df_comb.plot(style="o-", figsize = (9,7), logx=True, grid=True)
+ax.legend(bbox_to_anchor=(1, 0.5))
+ax.set_xlabel('Number of trees')
+
+
+# In[19]:
+
+ax = df_comb.rolling(5).mean().plot(style='o-', logx=True)
+ax.legend(bbox_to_anchor=(1, 0.5))
+ax.set_xlabel('Number of trees')
+
+
+# ### Question #2 what if only rainfall
+
+# In[81]:
+
+suffixes = ['revisions1', 'only_rd', 'only_rain', 'no_rd', 'no_tides', 'top_5', 'top_2', 'revisions2', 'revisions2_no_tide']
+
+
+# In[82]:
+
+dfs = []
+for s in suffixes:
+    df = make_results_df(suffix=s)
+    dfs.append(df)
+    df.index = ["{}_{}".format(i, s) for i in df.index]
+df_vars = pd.concat(dfs)
+
+    
+
+
+# In[83]:
+
+df_vars
+
+
+# In[23]:
+
+(21.41-17.82)/21.41
+
+
+# In[24]:
+
+(21.41-20.49)/21.41
+
+
+# In[25]:
+
+(24.95-21.41)/21.41
+
+
+# In[26]:
+
+ax = df_vars.plot.bar(figsize=(8,6))
+ax.legend(bbox_to_anchor=(1, 0.5))
+
+
+# ### Sensitivity to number of variables
+
+# In[43]:
+
+suffixes = [4, 6, 8, 10, 12, 14, 16, 18, 20]
+suffixes = ['rf_{}v'.format(i) for i in suffixes]
+
+
+# In[44]:
+
+dfs = []
+for s in suffixes:
+    df = make_results_df(suffix=s, models=['rf'])
+    dfs.append(df)
+    df.index = ["{}_{}".format(i, s) for i in df.index]
+df_nvars = pd.concat(dfs)
+
+    
+
+
+# In[45]:
+
+df_nvars
+
+
+# In[46]:
+
+ax = df_nvars.plot(figsize=(8,6))
+ax.legend(bbox_to_anchor=(1, 0.5))
+
+
+# In[3]:
+
+df_tune = get_db_table_as_df("tuning_mtry", dbfilename=db_filename)
+
+
+# In[5]:
+
+del df_tune['row_names']
+
+
+# In[36]:
+
+df_tune_piv = df_tune.pivot(columns="mtry", values="OOBError")
+df_tune_piv.mean().plot.bar()
+
+
+# In[54]:
+
+j = 0
+l = []
+m = []
+first_time = True
+for i in df_tune.iterrows():
+    if i[1]['mtry'] == 1 and first_time == False:
+        sub_df = pd.DataFrame(m)
+        sub_df['num_run'] = j
+        sub_df['rank'] = sub_df['OOBError'].rank()
+        l.append(sub_df)
+        j += 1
+        m = []
+    first_time = False
+    m.append(i[1])
+
+
+# In[68]:
+
+df_tune_counts = pd.concat(l)
+
+
+# In[69]:
+
+df_tune_counts.head()
+
+
+# In[72]:
+
+df_tune_rank_pivot = df_tune_counts.pivot_table(values='rank', columns='num_run', index='mtry')
+
+
+# In[74]:
+
+df_tune_rank_pivot.head(6)
+
+
+# In[80]:
+
+(df_tune_rank_pivot == 1).sum(1).plot.bar()
+
