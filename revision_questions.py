@@ -149,12 +149,12 @@ ax.set_xlabel('Number of trees')
 
 # ### Question #2 what if only rainfall
 
-# In[81]:
+# In[20]:
 
 suffixes = ['revisions1', 'only_rd', 'only_rain', 'no_rd', 'no_tides', 'top_5', 'top_2', 'revisions2', 'revisions2_no_tide']
 
 
-# In[82]:
+# In[21]:
 
 dfs = []
 for s in suffixes:
@@ -166,7 +166,7 @@ df_vars = pd.concat(dfs)
     
 
 
-# In[83]:
+# In[22]:
 
 df_vars
 
@@ -194,13 +194,13 @@ ax.legend(bbox_to_anchor=(1, 0.5))
 
 # ### Sensitivity to number of variables
 
-# In[43]:
+# In[27]:
 
-suffixes = [4, 6, 8, 10, 12, 14, 16, 18, 20]
+suffixes = [4, 6, 8, 10, 12, 14, 18, 20]
 suffixes = ['rf_{}v'.format(i) for i in suffixes]
 
 
-# In[44]:
+# In[28]:
 
 dfs = []
 for s in suffixes:
@@ -212,34 +212,34 @@ df_nvars = pd.concat(dfs)
     
 
 
-# In[45]:
+# In[29]:
 
 df_nvars
 
 
-# In[46]:
+# In[30]:
 
 ax = df_nvars.plot(figsize=(8,6))
 ax.legend(bbox_to_anchor=(1, 0.5))
 
 
-# In[3]:
+# In[31]:
 
 df_tune = get_db_table_as_df("tuning_mtry", dbfilename=db_filename)
 
 
-# In[5]:
+# In[32]:
 
 del df_tune['row_names']
 
 
-# In[36]:
+# In[33]:
 
 df_tune_piv = df_tune.pivot(columns="mtry", values="OOBError")
 df_tune_piv.mean().plot.bar()
 
 
-# In[54]:
+# In[34]:
 
 j = 0
 l = []
@@ -257,27 +257,75 @@ for i in df_tune.iterrows():
     m.append(i[1])
 
 
-# In[68]:
+# In[35]:
 
 df_tune_counts = pd.concat(l)
 
 
-# In[69]:
+# In[36]:
 
 df_tune_counts.head()
 
 
-# In[72]:
+# In[37]:
 
 df_tune_rank_pivot = df_tune_counts.pivot_table(values='rank', columns='num_run', index='mtry')
 
 
-# In[74]:
+# In[38]:
 
 df_tune_rank_pivot.head(6)
 
 
-# In[80]:
+# In[39]:
 
 (df_tune_rank_pivot == 1).sum(1).plot.bar()
+
+
+# ## number of predictions outside 159 poisson
+
+# In[40]:
+
+suffix = '_revisions2_'
+tables_rev2 = get_tables(suffix)
+
+
+# In[41]:
+
+tables_rev2
+
+
+# In[42]:
+
+ps_prd = tables_rev2['ps_tst']['all_pred_tst']
+
+
+# Percent above 159
+
+# In[43]:
+
+(ps_prd > 159).sum()/float(len(ps_prd)) * 100
+
+
+# Percent above 159 when prediction is at least 0.5 (rounds to 1)
+
+# In[44]:
+
+(ps_prd > 159).sum()/float((ps_prd>0.5).sum()) * 100
+
+
+# ### predictions when true flooding is 31
+
+# In[52]:
+
+ps_tst = tables_rev2['ps_tst']
+pred_31 = ps_tst[(ps_tst['all_tst']==31) & (ps_tst['all_pred_tst']<159)]['all_pred_tst']
+print pred_31.mean()
+print pred_31.max()
+print pred_31.min()
+
+
+# In[ ]:
+
+
 

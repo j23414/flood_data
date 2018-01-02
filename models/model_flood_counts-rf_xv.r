@@ -112,11 +112,11 @@ all_pred_trn = c()
 all_tst = c()
 all_trn = c()
 fomla = as.formula(paste(out_col_name, "~", paste(in_col_names, collapse="+")))
-model_types = c('rf')
-suffix = 'rf_16v'
+model_types = c('rf', 'poisson')
+suffix = 'revisions2_500'
 clear_db_tables(model_types, con, suffix)
 tuned_list = data.frame(matrix(ncol=2, nrow=0), colnames(c("mtry", "OOBError")))
-for (i in 1:100){
+for (i in 1:101){
   prt = createDataPartition(model_data[, out_col_name], p=0.7)
   train_data = model_data[prt$Resample1,]
   train_in_data = data.frame(train_data[, in_col_names])
@@ -128,28 +128,24 @@ for (i in 1:100){
   
   for (model in model_types){
 	  print(paste("run: ", i, sep = ''))
-    #output = randomForest(fmla, data=trn_data, importance = TRUE, ntree=500, mtry=16)
-    tuned = tuneRF(train_in_data, train_out_data, 2, ntreeTry=500, stepFactor=2, improve=0.02,
-           trace=TRUE, plot=TRUE, doBest=FALSE)
-    tuned_list = rbind(tuned_list, tuned)
-    plot(tuned)
-#     model_results = run_model(model, train_data, train_in_data, train_out_data, test_in_data, test_out_data, fomla)
-# 	  pred_train = model_results[1]
-# 	  pred_test = model_results[2]
-# 
-# 	  all_trn_df = data.frame(train_out_data, unlist(pred_train))
-# 	  colnames(all_trn_df) = c('all_trn', 'all_pred_trn')
-# 	  all_tst_df = data.frame(test_out_data, unlist(pred_test))
-# 	  colnames(all_tst_df) = c('all_tst', 'all_pred_tst')
-# 	  dbWriteTable(con, paste(model, '_', suffix, '_train', sep=""), all_trn_df, append=TRUE)
-# 	  dbWriteTable(con, paste(model, '_', suffix, '_test', sep=""), all_tst_df, append=TRUE)
-# 
-# 	  if (model == 'rf'){
-#       impo = model_results[3]
-# 	    import_df = cbind(import_df, impo)
-# 	  }
+    
+    model_results = run_model(model, train_data, train_in_data, train_out_data, test_in_data, test_out_data, fomla)
+	  pred_train = model_results[1]
+	  pred_test = model_results[2]
+
+	  all_trn_df = data.frame(train_out_data, unlist(pred_train))
+	  colnames(all_trn_df) = c('all_trn', 'all_pred_trn')
+	  all_tst_df = data.frame(test_out_data, unlist(pred_test))
+	  colnames(all_tst_df) = c('all_tst', 'all_pred_tst')
+	  dbWriteTable(con, paste(model, '_', suffix, '_train', sep=""), all_trn_df, append=TRUE)
+	  dbWriteTable(con, paste(model, '_', suffix, '_test', sep=""), all_tst_df, append=TRUE)
+
+	  if (model == 'rf'){
+      impo = model_results[3]
+	    import_df = cbind(import_df, impo)
+	  }
 	}
 }
-#colnames(import_df) = 1:ncol(import_df)
-#row.names(import_df) = in_col_names
-#dbWriteTable(con, paste('rf_impo_', suffix, sep=""), import_df, overwrite=TRUE)
+colnames(import_df) = 1:ncol(import_df)
+row.names(import_df) = in_col_names
+dbWriteTable(con, paste('rf_impo_', suffix, sep=""), import_df, overwrite=TRUE)
