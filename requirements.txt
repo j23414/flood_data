@@ -1,0 +1,9 @@
+### Python Dependencies for waterbear ###
+### Cyber Carpentry 2018 ###
+
+### General Packages ### May need to use specific versions
+scipy
+pandas
+sklearn
+jupyter
+matplotlib
