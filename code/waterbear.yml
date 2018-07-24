@@ -1,0 +1,12 @@
+name: waterbear
+#source:
+#   fn: *.gz
+#   url
+#   md5
+dependencies:
+  - python=2.7
+  - numpy=1.14.*
+  - pandas=0.22.*
+  - sqlite=3.24.0
+  - jupyter=1.0.*
+  - scikit-learn=0.19.1
