@@ -1,6 +1,10 @@
 # Flood Data
 *Write project description here*
 
+** Conda Setup **
+To set up conda environment and install Python packages:
+> conda env create -f waterbear.yml --name waterbear
+> conda activate waterbear
 
 **Dependencies**
 
