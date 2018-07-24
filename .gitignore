@@ -3,3 +3,7 @@
 *.pyc
 */.ipynb_checkpoints/*
 .ipynb_checkpoints/*
+**/*.zip
+**/*.csv
+**/*.png
+data/**
