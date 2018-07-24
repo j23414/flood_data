@@ -4,7 +4,18 @@
 
 **Dependencies**
 
-* python
+* python=2.7
+* numpy
+* pandas
+* sklearn
+* sqlite3
+* os
+* math
+* re
+* math
+* matplotlib
+* pydoplus
+* time
 
 ### Pull github branch
 
