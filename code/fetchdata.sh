@@ -1,5 +1,5 @@
 #! /usr/bin/env bash
-# Auth: Jennifer Chang
+# Auth: Alice Sun, Jennifer Chang
 # Date: 2018/07/23
 
 set -e
