@@ -1,5 +1,9 @@
 # Pipeline (works on mac)
 
+**Dependencies**
+
+* R 3.1
+
 **Move Required Files to this folder**
 
 * `hampt_rd_data.sqlite`
