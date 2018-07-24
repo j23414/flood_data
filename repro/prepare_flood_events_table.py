@@ -1,10 +1,9 @@
-
+#! /usr/bin/env python
+# Date: modified 2018/07/25
+# Desc: Prepare Flood Events data for DB
 # coding: utf-8
 
-# # Prepare Flood Events data for DB
-
 # In[1]:
-
 import os
 import sys
 module_path = os.path.abspath(os.path.join('..'))

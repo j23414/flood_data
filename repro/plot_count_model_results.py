@@ -3,10 +3,12 @@
 # Date:
 
 import sys
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
-import matplotlib
+
 matplotlib.rcParams.update({'font.size': 8})
 matplotlib.rcParams['font.family'] = 'sans-serif'
 matplotlib.rcParams['font.sans-serif'] = ['Arial']
