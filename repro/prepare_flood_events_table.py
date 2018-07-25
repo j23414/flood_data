@@ -20,7 +20,7 @@ db_filename='hampt_rd_data.sqlite'
 # In[2]:
 
 #cds = pd.read_csv('STORM_data_flooded_streets_2010-2016_no_duplicates_clean_lat_lon.csv')
-cds = pd.read_csv('STORM_data_flooded_streets_2010-2016.csv')
+cds = pd.read_csv('db_scripts/STORM_data_flooded_streets_2010-2016.csv')
 
 
 # ### Index by location name and subset to just columns we want
