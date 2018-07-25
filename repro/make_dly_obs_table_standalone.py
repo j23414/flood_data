@@ -267,10 +267,8 @@ rain_daily_comb_named['rd-14'][rain_daily_comb_named['rd-14']<0]
 
 rain15.loc['2014-06-24']
 
-
-# In[24]:
-
-rain_prev_3_days.plot.box()
+# In[24]
+#rain_prev_3_days.plot.box()
 
 
 # #  Groundwater
