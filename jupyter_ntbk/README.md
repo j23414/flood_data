@@ -18,7 +18,7 @@ Sadler, Goodall, Morsy, & Spencer. (2018). Modeling urban coastal flood severity
    Output: for_model_avgs.csv
    
 4. plot_count_model_results.ipynb
-   Output: poisson_out_test.csv
+   Input: poisson_out_test.csv
            poisson_out_train.csv
            rf_out_test.csv
            rf_out_train.csv
