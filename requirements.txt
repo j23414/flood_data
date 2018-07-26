@@ -1,5 +1,5 @@
 pandas==0.22.*
 numpy==1.14.*
-sqlite==3.24.0
+sqlite
 matplotlib==2.0.2 
 jupyter==1.0.*
