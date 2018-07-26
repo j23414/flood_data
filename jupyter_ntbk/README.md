@@ -5,6 +5,8 @@ Sadler, Goodall, Morsy, & Spencer. (2018). Modeling urban coastal flood severity
 
 ### Run jupyter notebooks
 
+[![Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/matthewdmanning/flood_data/containers?filepath=jupyter_ntbk)
+
 1. prepare_flood_events_table.ipynb
    Input: STORM_data_flooded_streets_2010-2016.csv
    Output: flood_events.csv
