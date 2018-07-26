@@ -82,8 +82,6 @@ cds
 
 # In[14]:
 
-con = sqlite3.connect(db_filename)
-cds.to_sql(con=con, name="flood_events", if_exists="replace")
 cds.to_csv('../data/flood_events.csv')
 
 

@@ -11,16 +11,43 @@
 
 * `hampt_rd_data.sqlite`
 
+```
+cd code
+./fetchdata.sh
+```
 
-Run the following:
+If you want to process the sqlite data then do the following script. However you will need 8Gib of RAM. If you do not then skip to the `by_event_for_model.py` script.
 
 ```
-../code/fetchdata.sh
 python make_dly_obs_table_standalone.py
+ls -ltr ../data/
+```
+
+The rest of this pipeline should run taking input and putting output files in the `flood_data/data/` folder.
+
+```
 python prepare_flood_events_table.py
 python by_event_for_model.py
 Rscript model_flood_counts_rf_ps_cln.r
 python plot_count_model_results.py out
+ls -ltr ../data/
+
+total 18400
+-rw-r--r--  1   staff   193K Jul 26 10:32 STORM_data_flooded_streets_2010-2016.csv
+-rw-r--r--  1   staff   119K Jul 26 11:20 flood_events.csv
+-rw-r--r--  1   staff   2.3M Jul 26 11:23 nor_daily_observations_standalone.csv
+-rw-r--r--  1   staff   536K Jul 26 11:28 for_model_avgs.csv
+-rw-r--r--  1   staff   1.6M Jul 26 11:30 rf_out_train.csv
+-rw-r--r--  1   staff   677K Jul 26 11:30 rf_out_test.csv
+-rw-r--r--  1   staff   1.5M Jul 26 11:30 poisson_out_train.csv
+-rw-r--r--  1   staff   672K Jul 26 11:30 poisson_out_test.csv
+-rw-r--r--  1   staff    33K Jul 26 11:30 rf_impo_out
+-rw-r--r--  1   staff    87K Jul 26 11:35 results_poisson_out.png
+-rw-r--r--  1   staff    29K Jul 26 11:35 results_poisson_out.eps
+-rw-r--r--  1   staff    86K Jul 26 11:35 results_rf_out.png
+-rw-r--r--  1   staff    29K Jul 26 11:35 results_rf_out.eps
+-rw-r--r--  1   staff   138K Jul 26 11:35 out_results_together.png
+-rw-r--r--  1   staff    46K Jul 26 11:35 out_results_together.eps
 ```
 
 ## Docker Image
