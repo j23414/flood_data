@@ -33,7 +33,7 @@ docker build -t waterbear .
 
 Running the docker image and scripts requires at least 8GB memory. 
 
-<img src="https://github.com/matthewdmanning/flood_data/blob/containers/imgs/dockersettings.png" width="400" alt="Docker Settings">
+<img src="https://github.com/matthewdmanning/flood_data/blob/containers/docs/dockersettings.png" width="400" alt="Docker Settings">
 
 Either run Docker interactively (using the same commands above) or through the provided `script.sh`.
 
