@@ -43,6 +43,7 @@ $ bash ../code/fetchdata.sh
 We have provided raw scripts, dockerfile, and jupyter notebooks. Click the link below to start your preferred method.
 
 * [run locally from raw scripts](https://github.com/matthewdmanning/flood_data/tree/containers/code)
-* [dockerfile](https://github.com/matthewdmanning/flood_data/tree/containers/code)
+* [Dockerfile](https://github.com/matthewdmanning/flood_data/tree/containers/code)
+* [DockerHub](https://hub.docker.com/r/matthewdmanning/flood_data/)
 * [jupyter notebook](https://github.com/matthewdmanning/flood_data/tree/containers/jupyter_ntbk)
 
