@@ -353,7 +353,7 @@ feature_df.head()
 
 # con = sqlite3.connect(db_filename)
 # feature_df.to_sql(con=con, name="nor_daily_observations", if_exists="replace")
-feature_df.to_csv('nor_daily_observations_standalone.csv')
+feature_df.to_csv('../data/nor_daily_observations_standalone.csv')
 
 
 # In[ ]:
