@@ -16,6 +16,15 @@ cd code
 ./fetchdata.sh
 ```
 
+or 
+
+```
+cd code
+wget https://www.hydroshare.org/django_irods/download/bags/9e1b23607ac240588ba50d6b5b9a49b5.zip
+unzip 9e1b23607ac240588ba50d6b5b9a49b5.zip
+mv 9e1b23607ac240588ba50d6b5b9a49b5/data/contents/hampt_rd_data.sqlite .
+```
+
 If you want to process the sqlite data then do the following script. However you will need 8Gib of RAM. If you do not then skip to the `by_event_for_model.py` script.
 
 ```
