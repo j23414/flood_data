@@ -14,6 +14,7 @@ RUN R -e "install.packages('DBI', repos = 'http://cran.us.r-project.org', depend
 # # ===== Other basic
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y \
      git \
+     curl \
      emacs \
 #     dh-autoreconf \
 #     build-essential \
@@ -34,9 +35,9 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -y \
 # ===== Git Repo
 RUN git clone https://github.com/matthewdmanning/flood_data.git
 RUN cd flood_data ; git checkout containers
-RUN cd flood_data/repro; curl https://www.hydroshare.org/django_irods/download/bags/9e1b23607ac240588ba50d6b5b9a49b5.zip -o 9e1b23607ac240588ba50d6b5b9a49b5.zip
-RUN cd flood_data/repro; unzip 9e1b23607ac240588ba50d6b5b9a49b5.zip
-RUN cd flood_data/repro; mv 9e1b23607ac240588ba50d6b5b9a49b5/data/contents/hampt_rd_data.sqlite .
+RUN cd flood_data/code; curl https://www.hydroshare.org/django_irods/download/bags/9e1b23607ac240588ba50d6b5b9a49b5.zip -o 9e1b23607ac240588ba50d6b5b9a49b5.zip
+RUN cd flood_data/code; unzip 9e1b23607ac240588ba50d6b5b9a49b5.zip
+RUN cd flood_data/code; mv 9e1b23607ac240588ba50d6b5b9a49b5/data/contents/hampt_rd_data.sqlite .
 
 ENV PATH=/:$PATH
 
