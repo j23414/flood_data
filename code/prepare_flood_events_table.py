@@ -9,17 +9,17 @@ import sys
 module_path = os.path.abspath(os.path.join('..'))
 if module_path not in sys.path:
     sys.path.append(module_path)
-from db_scripts.main_db_script import data_dir, db_filename
+#from db_scripts.main_db_script import data_dir, db_filename
 import pandas as pd
 import sqlite3
 
-db_filename='hampt_rd_data.sqlite'
+#db_filename='hampt_rd_data.sqlite'
 # ### Read in the data
 
 # In[2]:
 
 #cds = pd.read_csv('STORM_data_flooded_streets_2010-2016_no_duplicates_clean_lat_lon.csv')
-cds = pd.read_csv('db_scripts/STORM_data_flooded_streets_2010-2016.csv')
+cds = pd.read_csv('../data/STORM_data_flooded_streets_2010-2016.csv')
 
 
 # ### Index by location name and subset to just columns we want
@@ -84,7 +84,7 @@ cds
 
 con = sqlite3.connect(db_filename)
 cds.to_sql(con=con, name="flood_events", if_exists="replace")
-cds.to_csv('flood_events.csv')
+cds.to_csv('../data/flood_events.csv')
 
 
 # In[15]:
