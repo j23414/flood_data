@@ -25,9 +25,9 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -y \
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y \
      python2.7 \
      python-pip \
-     python-pandas \
-     python-matplotlib
-    
+     python-numpy 1.12.0 \
+     python-matplotlib 2.0.0 \
+     python-pandas 0.22 \
 # Setup python
 #RUN cd /usr/bin/; ln -s python2.7 python
 #RUN python2.7 -m pip install pandas==0.22
