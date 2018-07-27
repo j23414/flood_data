@@ -1,0 +1,11 @@
+../data/flood_events.csv:
+    python prepare_flood_events_table.py
+
+../data/for_model_args.csv: ../data/flood_events.csv ../data/nor_daily_observations_standalone.csv
+    python by_event_for_model.py
+
+../data/poisson_out_test.csv.csv: ../data/for_model_args.csv
+    Rscript model_flood_counts_rf_ps_cln.r
+
+../data/out_results_together.png: ../data/poisson_out_train.csv
+    python plot_count_model_results.py out
