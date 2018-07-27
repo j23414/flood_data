@@ -4,8 +4,9 @@
 
 * R 3.4.4
 * Python 2.7
-* Python pandas
-* Python matplotlib
+* Python numpy 1.12.0
+* Python matplotlib 2.0.0
+* Python pandas 0.22
 
 **Move Required Files to this folder**
 
