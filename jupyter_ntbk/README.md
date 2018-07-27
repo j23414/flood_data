@@ -24,5 +24,26 @@ Sadler, Goodall, Morsy, & Spencer. (2018). Modeling urban coastal flood severity
            poisson_out_train.csv
            rf_out_test.csv
            rf_out_train.csv
+           
+### Run from singularity on Jetstream instance
+
+1. build the singularity image 
+
+sudo build waterbear_ipynb.simg Singularity
+
+2. upload jupyter notebook files, r script and STORM_data_flooded_streets_2010-2016.csv to working directory
+
+3. run singularity image 
+
+singularity run waterbear_ipynb.simg
+
+4.. about the network...
+
+from terminal on local machine
+ssh -L 9999:127.0.0.1:8888 USER_NAME@Jetstream_instance_IP
+
+5. copy the URL appeared after running singularity image to browser and enjoy:)
+
+Note: For it to run, the instance might need to have RAM larger than 8 GB..
 
 ### Good luck from waterbear!
